@@ -30,7 +30,7 @@ This command will build and start the following services in the background:
 ### Generate the Laravel Application Key (First time running the application)
 
 - ```docker-compose exec backend php artisan key:generate```
-- This will generate a new APP_KEY and automatically update the .env file inside the Laravel container.
+- copy the key in the output and put in the backend .env yourself
 
 ### Set Up Environment Variables
 
