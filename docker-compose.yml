@@ -8,9 +8,8 @@ services:
       - "3000:3000"
     depends_on:
       - backend
-    environment:
-    # laravel api url here
-    #  - NEXT_PUBLIC_API_URL=
+    env_file:
+      - .env 
 
   backend:
     build:
@@ -29,11 +28,8 @@ services:
     container_name: db
     ports:
       - "3306:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=liftnote
-      - MYSQL_DATABASE=liftnote
-      - MYSQL_USER=liftnote
-      - MYSQL_PASSWORD=liftnote
+    env_file:
+      - .env
     volumes:
       - db_data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
