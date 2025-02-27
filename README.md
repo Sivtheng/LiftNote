@@ -11,9 +11,9 @@
 ### Prerequisites
 
 - Before you begin, ensure you have the following installed on your machine:
-  - Docker (for running containers)
-  - Docker Compose (for managing multi-container Docker applications)
-- You can download and install Docker from here.
+  - Docker
+  - Docker Compose
+- You can download and install Docker yourself.
 
 ### Set Up Commands
 
