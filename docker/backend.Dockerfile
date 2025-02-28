@@ -23,6 +23,14 @@ RUN apt-get update --fix-missing && apt-get install -y \
 # Enable Apache rewrite module
 RUN a2enmod rewrite
 
+# Update Apache configuration to point to Laravel's public directory
+RUN sed -i -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf \
+    && echo '<Directory /var/www/html/public>\n\
+    Options Indexes FollowSymLinks\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>' >> /etc/apache2/apache2.conf
+
 # Install Composer
 COPY --from=composer:2.5 /usr/bin/composer /usr/bin/composer
 
@@ -31,8 +39,10 @@ COPY ./backend /var/www/html
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
+    && find /var/www/html -type f -exec chmod 644 {} \; \
+    && find /var/www/html -type d -exec chmod 755 {} \; \
+    && chmod -R 775 /var/www/html/storage \
+    && chmod -R 775 /var/www/html/bootstrap/cache
 
 # Set environment variable to allow Composer to run as root
 ENV COMPOSER_ALLOW_SUPERUSER=1
@@ -42,6 +52,3 @@ RUN composer install --no-dev --optimize-autoloader -d /var/www/html
 
 # Expose the app port
 EXPOSE 80
-
-# Start Apache server
-CMD ["apache2-foreground"]
