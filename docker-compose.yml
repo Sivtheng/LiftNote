@@ -10,6 +10,8 @@ services:
       - backend
     env_file:
       - .env 
+    networks:
+      - liftnote_network
 
   backend:
     build:
@@ -25,6 +27,8 @@ services:
     env_file:
       - ./backend/.env
     command: ["sh", "-c", "php artisan migrate --force && apache2-foreground"]
+    networks:
+      - liftnote_network
 
   liftnote_db:
     image: mysql:8.0
@@ -37,10 +41,12 @@ services:
       - liftnote_db_data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     command: --default-authentication-plugin=mysql_native_password --bind-address=0.0.0.0
+    networks:
+      - liftnote_network
 
 volumes:
   liftnote_db_data:
 
 networks:
-  default:
+  liftnote_network:
     driver: bridge
