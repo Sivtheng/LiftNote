@@ -19,20 +19,20 @@ services:
     ports:
       - "8000:80"
     depends_on:
-      - db
+      - liftnote_db
     volumes:
       - ./backend:/var/www/html
 
-  db:
+  liftnote_db:
     image: mysql:8.0
-    container_name: db
+    container_name: liftnote_db
     ports:
-      - "3306:3306"
+      - "3309:3306"
     env_file:
       - .env
     volumes:
-      - db_data:/var/lib/mysql
+      - liftnote_db_data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
-  db_data:
+  liftnote_db_data:
