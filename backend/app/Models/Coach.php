@@ -18,6 +18,6 @@ class Coach extends Model
 
     public function programs()
     {
-        return $this->hasMany(Program::class, 'coach_id');
+        return $this->hasMany(Program::class);
     }
 }
