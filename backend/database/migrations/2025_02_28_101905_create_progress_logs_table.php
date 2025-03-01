@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('progress_logs', function (Blueprint $table) {
-            $table->id('ProgressLogID');
-            $table->foreignId('ClientID')->constrained('clients');
-            $table->foreignId('ProgramID')->constrained('programs');
-            $table->json('ProgressData')->nullable();
+            $table->id();
+            $table->foreignId('client_id')->constrained()->onDelete('cascade');;
+            $table->foreignId('program_id')->constrained()->onDelete('cascade');;
+            $table->json('progress_data')->nullable();
             $table->timestamps(0);
         });
     }

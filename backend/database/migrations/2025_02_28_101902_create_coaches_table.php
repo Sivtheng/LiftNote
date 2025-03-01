@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('programs', function (Blueprint $table) {
-            $table->id('ProgramID');
-            $table->foreignId('CoachID')->constrained('coaches');
-            $table->string('ProgramName');
-            $table->text('Description')->nullable();
-            $table->json('ProgramDetails')->nullable();
+        Schema::create('coaches', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->string('profile_image')->nullable();
             $table->timestamps(0);
         });
     }
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('programs');
+        Schema::dropIfExists('coaches');
     }
 };

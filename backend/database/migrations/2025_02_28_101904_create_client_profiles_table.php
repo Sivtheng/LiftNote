@@ -12,11 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('client_profiles', function (Blueprint $table) {
-            $table->id('ClientProfileID');
-            $table->foreignId('ClientID')->constrained('clients')->unique();
-            $table->text('BodyDetails')->nullable();
-            $table->text('WorkoutGoals');
-            $table->timestamps(0);
+            $table->id();
+            $table->foreignId('client_id')->constrained()->onDelete('cascade');
+            $table->text('body_details')->nullable();
+            $table->text('workout_goals');
+            $table->timestamps();
         });
     }
 

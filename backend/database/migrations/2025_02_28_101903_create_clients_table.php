@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('coaches', function (Blueprint $table) {
-            $table->id('CoachID');
-            $table->string('Name');
-            $table->string('Email')->unique();
-            $table->string('Password');
-            $table->string('ProfileImage')->nullable();
+        Schema::create('clients', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->string('profile_image')->nullable();
             $table->timestamps(0);
         });
     }
@@ -26,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('coaches');
+        Schema::dropIfExists('clients');
     }
 };
