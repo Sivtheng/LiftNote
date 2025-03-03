@@ -44,6 +44,30 @@ services:
     networks:
       - liftnote
 
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    ports:
+      - "8092:80"
+    environment:
+      PMA_HOST: liftnote_db
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      - liftnote_db
+    networks:
+      - liftnote
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    restart: always
+    ports:
+      - "8042:8025"
+      - "1042:1025"
+    networks:
+      - liftnote
+
 volumes:
   liftnote_db_data:
 
