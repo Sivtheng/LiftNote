@@ -22,4 +22,9 @@ class Client extends Model
     {
         return $this->hasOne(ClientProfile::class);
     }
+
+    public function questionnaires()
+    {
+        return $this->hasMany(Questionnaire::class);
+    }
 }

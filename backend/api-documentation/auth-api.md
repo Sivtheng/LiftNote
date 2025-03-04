@@ -82,29 +82,29 @@ Response:
 - Register a New Client
 
 ```bash
-curl -X POST <http://localhost:8000/api/register> \
+curl -X POST http://localhost:8000/api/register \
      -H "Content-Type: application/json" \
-     -d '{"name": "Test Client", "email": "<client@example.com>", "password": "password123", "password_confirmation": "password123"}'
+     -d '{"name": "Test Client", "email": "client@example.com", "password": "password123", "password_confirmation": "password123"}'
 ```
 
 - Log In
 
 ```bash
-curl -X POST <http://localhost:8000/api/login> \
+curl -X POST http://localhost:8000/api/login \
      -H "Content-Type: application/json" \
-     -d '{"email": "<client@example.com>", "password": "password123"}'
+     -d '{"email": "client@example.com", "password": "password123"}'
 ```
 
 - Get Profile (Authenticated)
 
 ```bash
-curl -X GET <http://localhost:8000/api/profile> \
+curl -X GET http://localhost:8000/api/profile \
      -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 - Log Out
 
 ```bash
-curl -X POST <http://localhost:8000/api/logout> \
+curl -X POST http://localhost:8000/api/logout \
      -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
