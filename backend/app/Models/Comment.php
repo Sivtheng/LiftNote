@@ -10,18 +10,24 @@ class Comment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'client_id',
+        'content',
+        'user_id',
         'program_id',
-        'comment_text',
+        'progress_log_id'
     ];
 
-    public function client()
+    public function user()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(User::class);
     }
 
     public function program()
     {
         return $this->belongsTo(Program::class);
+    }
+
+    public function progressLog()
+    {
+        return $this->belongsTo(ProgressLog::class);
     }
 }

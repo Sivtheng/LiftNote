@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,9 +13,20 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([
-            AdminSeeder::class,
-            CoachSeeder::class,
+        // Create Admin User
+        User::create([
+            'name' => 'Admin User',
+            'email' => 'admin@liftnote.com',
+            'password' => Hash::make('password'),
+            'role' => 'admin',
+        ]);
+
+        // Create Coach User
+        User::create([
+            'name' => 'Coach User',
+            'email' => 'coach@liftnote.com',
+            'password' => Hash::make('password'),
+            'role' => 'coach',
         ]);
     }
 }

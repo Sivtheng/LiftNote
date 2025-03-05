@@ -13,10 +13,12 @@ return new class extends Migration
     {
         Schema::create('progress_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('client_id')->constrained()->onDelete('cascade');;
-            $table->foreignId('program_id')->constrained()->onDelete('cascade');;
-            $table->json('progress_data')->nullable();
-            $table->timestamps(0);
+            $table->string('title');
+            $table->text('description');
+            $table->foreignId('client_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('program_id')->constrained()->onDelete('cascade');
+            $table->date('date');
+            $table->timestamps();
         });
     }
 

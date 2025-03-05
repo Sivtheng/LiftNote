@@ -13,11 +13,12 @@ return new class extends Migration
     {
         Schema::create('programs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('coach_id')->constrained()->onDelete('cascade'); 
-            $table->string('program_name');
-            $table->text('description')->nullable();
-            $table->json('program_details')->nullable();
-            $table->timestamps(0);
+            $table->string('title');
+            $table->text('description');
+            $table->foreignId('coach_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('client_id')->constrained('users')->onDelete('cascade');
+            $table->enum('status', ['active', 'completed', 'cancelled'])->default('active');
+            $table->timestamps();
         });
     }
 

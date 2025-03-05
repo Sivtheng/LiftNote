@@ -10,19 +10,29 @@ class ProgressLog extends Model
     use HasFactory;
 
     protected $fillable = [
+        'title',
+        'description',
         'client_id',
         'program_id',
-        'progress_details',
-        'progress_date',
+        'date'
+    ];
+
+    protected $casts = [
+        'date' => 'datetime'
     ];
 
     public function client()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(User::class, 'client_id')->where('role', 'client');
     }
 
     public function program()
     {
         return $this->belongsTo(Program::class);
+    }
+
+    public function comments()
+    {
+        return $this->hasMany(Comment::class);
     }
 }

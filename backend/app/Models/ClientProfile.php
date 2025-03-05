@@ -11,12 +11,14 @@ class ClientProfile extends Model
 
     protected $fillable = [
         'client_id',
-        'body_details',
-        'workout_goals',
+        'height',
+        'weight',
+        'fitness_goal',
+        'medical_condition'
     ];
 
     public function client()
     {
-        return $this->belongsTo(Client::class);
+        return $this->belongsTo(User::class, 'client_id')->where('role', 'client');
     }
 }

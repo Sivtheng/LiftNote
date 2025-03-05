@@ -13,9 +13,11 @@ return new class extends Migration
     {
         Schema::create('client_profiles', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('client_id')->constrained()->onDelete('cascade');
-            $table->text('body_details')->nullable();
-            $table->text('workout_goals');
+            $table->foreignId('client_id')->constrained('users')->onDelete('cascade');
+            $table->decimal('height', 5, 2)->nullable();
+            $table->decimal('weight', 5, 2)->nullable();
+            $table->string('fitness_goal')->nullable();
+            $table->text('medical_condition')->nullable();
             $table->timestamps();
         });
     }

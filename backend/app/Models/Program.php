@@ -10,14 +10,20 @@ class Program extends Model
     use HasFactory;
 
     protected $fillable = [
-        'coach_id',
-        'program_name',
+        'title',
         'description',
-        'program_details',
+        'coach_id',
+        'client_id',
+        'status'
     ];
 
     public function coach()
     {
-        return $this->belongsTo(Coach::class);
+        return $this->belongsTo(User::class, 'coach_id')->where('role', 'coach');
+    }
+
+    public function client()
+    {
+        return $this->belongsTo(User::class, 'client_id')->where('role', 'client');
     }
 }

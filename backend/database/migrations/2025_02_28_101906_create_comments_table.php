@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('comments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('client_id')->nullable()->constrained()->onDelete('cascade');;
-            $table->foreignId('coach_id')->nullable()->constrained()->onDelete('cascade');;
-            $table->foreignId('program_id')->constrained()->onDelete('cascade');;
-            $table->text('message');
-            $table->timestamps(0);
+            $table->text('content');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('program_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('progress_log_id')->nullable()->constrained()->onDelete('cascade');
+            $table->timestamps();
         });
     }
 

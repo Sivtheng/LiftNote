@@ -11,15 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Create the admins table instead of users
-        Schema::create('admins', function (Blueprint $table) {
+        Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->enum('role', ['admin', 'coach', 'client']);
+            $table->string('phone_number')->nullable();
+            $table->text('bio')->nullable();
+            $table->string('profile_picture')->nullable();
+            $table->timestamp('email_verified_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         // Create password_reset_tokens table (this can still reference the email)
@@ -45,8 +49,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Drop the admins table
-        Schema::dropIfExists('admins');
+        Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
     }
