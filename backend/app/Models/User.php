@@ -7,6 +7,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
@@ -32,40 +34,43 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    // Role checking methods
-    public function isAdmin()
+    public function isAdmin(): bool
     {
         return $this->role === 'admin';
     }
 
-    public function isCoach()
+    public function isCoach(): bool
     {
         return $this->role === 'coach';
     }
 
-    public function isClient()
+    public function isClient(): bool
     {
         return $this->role === 'client';
     }
 
-    // Relationships
-    public function programs()
+    public function programs(): HasMany
     {
         return $this->hasMany(Program::class, 'coach_id');
     }
 
-    public function comments()
+    public function comments(): HasMany
     {
         return $this->hasMany(Comment::class);
     }
 
-    public function progressLogs()
+    public function progressLogs(): HasMany
     {
         return $this->hasMany(ProgressLog::class, 'client_id');
     }
 
-    public function clientProfile()
+    public function clientProfile(): HasOne
     {
         return $this->hasOne(ClientProfile::class, 'client_id');
+    }
+
+    public function questionnaires(): HasMany
+    {
+        return $this->hasMany(Questionnaire::class, 'client_id');
     }
 } 

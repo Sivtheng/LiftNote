@@ -19,6 +19,8 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@liftnote.com',
             'password' => Hash::make('password'),
             'role' => 'admin',
+            'phone_number' => '1234567890',
+            'bio' => 'System Administrator',
         ]);
 
         // Create Coach User
@@ -27,6 +29,8 @@ class DatabaseSeeder extends Seeder
             'email' => 'coach@liftnote.com',
             'password' => Hash::make('password'),
             'role' => 'coach',
+            'phone_number' => '0987654321',
+            'bio' => 'Professional Fitness Coach',
         ]);
     }
 }
