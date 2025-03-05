@@ -69,8 +69,8 @@ class User extends Authenticatable
         return $this->hasOne(ClientProfile::class, 'client_id');
     }
 
-    public function questionnaires(): HasMany
+    public function questionnaire(): HasOne
     {
-        return $this->hasMany(Questionnaire::class, 'client_id');
+        return $this->hasOne(Questionnaire::class, 'client_id');
     }
 } 

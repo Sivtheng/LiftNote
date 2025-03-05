@@ -14,16 +14,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'profile']);
 
-    // Client Routes
-    Route::middleware('role:client')->group(function () {
-        Route::get('/my-questionnaires', [QuestionnaireController::class, 'showMine']);
-    });
+    // Questionnaire Routes
+    Route::prefix('questionnaires')->group(function () {
+        // Client Routes
+        Route::middleware('role:client')->group(function () {
+            Route::get('/mine', [QuestionnaireController::class, 'show']);
+            Route::post('/submit', [QuestionnaireController::class, 'submitAnswers']);
+        });
 
-    // Coach Routes
-    Route::middleware('role:coach,admin')->group(function () {
-        Route::post('/users/{client}/questionnaires', [QuestionnaireController::class, 'store']);
+        // Coach/Admin Routes
+        Route::middleware('role:coach,admin')->group(function () {
+            Route::get('/users/{client}', [QuestionnaireController::class, 'getClientQuestionnaire']);
+        });
     });
-
-    // Shared Routes (Coach, Admin, or Own Client Data)
-    Route::get('/users/{client}/questionnaires', [QuestionnaireController::class, 'show']);
 });
