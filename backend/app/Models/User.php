@@ -64,11 +64,6 @@ class User extends Authenticatable
         return $this->hasMany(ProgressLog::class, 'client_id');
     }
 
-    public function clientProfile(): HasOne
-    {
-        return $this->hasOne(ClientProfile::class, 'client_id');
-    }
-
     public function questionnaire(): HasOne
     {
         return $this->hasOne(Questionnaire::class, 'client_id');
