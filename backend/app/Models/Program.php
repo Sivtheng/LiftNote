@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Program extends Model
 {
@@ -17,13 +19,22 @@ class Program extends Model
         'status'
     ];
 
-    public function coach()
+    protected $casts = [
+        'status' => 'string'
+    ];
+
+    public function coach(): BelongsTo
     {
         return $this->belongsTo(User::class, 'coach_id')->where('role', 'coach');
     }
 
-    public function client()
+    public function client(): BelongsTo
     {
         return $this->belongsTo(User::class, 'client_id')->where('role', 'client');
+    }
+
+    public function progressLogs(): HasMany
+    {
+        return $this->hasMany(ProgressLog::class);
     }
 }
