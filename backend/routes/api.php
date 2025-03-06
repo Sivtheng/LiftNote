@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\QuestionnaireController;
 use App\Http\Controllers\ProgramController;
+use App\Http\Controllers\ProgressLogController;
 
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -46,5 +47,27 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Shared Routes (authorized in controller)
         Route::get('/{program}', [ProgramController::class, 'show']);
+
+        // Progress Log Routes
+        Route::prefix('/{program}/progress')->group(function () {
+            // Client Routes
+            Route::middleware('role:client')->group(function () {
+                Route::post('/', [ProgressLogController::class, 'create']);
+            });
+
+            // Shared Routes (authorized in controller)
+            Route::get('/', [ProgressLogController::class, 'getProgramLogs']);
+        });
+    });
+
+    // Progress Log Routes (for specific logs)
+    Route::prefix('progress-logs')->group(function () {
+        Route::get('/{progressLog}', [ProgressLogController::class, 'show']);
+        
+        // Client Routes
+        Route::middleware('role:client')->group(function () {
+            Route::put('/{progressLog}', [ProgressLogController::class, 'update']);
+            Route::delete('/{progressLog}', [ProgressLogController::class, 'delete']);
+        });
     });
 });
