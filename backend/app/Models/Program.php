@@ -37,4 +37,9 @@ class Program extends Model
     {
         return $this->hasMany(ProgressLog::class);
     }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
 }

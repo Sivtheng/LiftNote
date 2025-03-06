@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\QuestionnaireController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ProgressLogController;
+use App\Http\Controllers\CommentController;
 
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -58,6 +59,23 @@ Route::middleware('auth:sanctum')->group(function () {
             // Shared Routes (authorized in controller)
             Route::get('/', [ProgressLogController::class, 'getProgramLogs']);
         });
+
+        // Comment Routes for Programs
+        Route::prefix('/{program}/comments')->group(function () {
+            // Get comments
+            Route::get('/', [CommentController::class, 'getProgramComments']);
+            
+            // Add comment (client or coach only)
+            Route::middleware('role:client,coach')->group(function () {
+                Route::post('/', [CommentController::class, 'addProgramComment']);
+            });
+
+            // Update and delete comments (comment owner or admin)
+            Route::prefix('/{comment}')->group(function () {
+                Route::put('/', [CommentController::class, 'updateProgramComment']);
+                Route::delete('/', [CommentController::class, 'deleteProgramComment']);
+            });
+        });
     });
 
     // Progress Log Routes (for specific logs)
@@ -68,6 +86,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('role:client')->group(function () {
             Route::put('/{progressLog}', [ProgressLogController::class, 'update']);
             Route::delete('/{progressLog}', [ProgressLogController::class, 'delete']);
+        });
+
+        // Comment Routes for Progress Logs
+        Route::prefix('/{progressLog}/comments')->group(function () {
+            // Get comments
+            Route::get('/', [CommentController::class, 'getProgressLogComments']);
+            
+            // Add comment (client or coach only)
+            Route::middleware('role:client,coach')->group(function () {
+                Route::post('/', [CommentController::class, 'addProgressLogComment']);
+            });
+
+            // Update and delete comments (comment owner or admin)
+            Route::prefix('/{comment}')->group(function () {
+                Route::put('/', [CommentController::class, 'updateProgressLogComment']);
+                Route::delete('/', [CommentController::class, 'deleteProgressLogComment']);
+            });
         });
     });
 });
