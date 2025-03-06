@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         // Create Admin User
         User::create([
-            'name' => 'Admin User',
+            'name' => 'admin',
             'email' => 'admin@liftnote.com',
             'password' => Hash::make('password'),
             'role' => 'admin',
@@ -25,7 +25,7 @@ class DatabaseSeeder extends Seeder
 
         // Create Coach User
         User::create([
-            'name' => 'Coach User',
+            'name' => 'coach',
             'email' => 'coach@liftnote.com',
             'password' => Hash::make('password'),
             'role' => 'coach',
