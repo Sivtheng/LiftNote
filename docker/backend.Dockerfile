@@ -37,12 +37,16 @@ COPY --from=composer:2.5 /usr/bin/composer /usr/bin/composer
 # Copy Laravel application code
 COPY ./backend /var/www/html
 
+# Create css directory and ensure it exists
+RUN mkdir -p /var/www/html/public/css
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && find /var/www/html -type f -exec chmod 644 {} \; \
     && find /var/www/html -type d -exec chmod 755 {} \; \
     && chmod -R 775 /var/www/html/storage \
-    && chmod -R 775 /var/www/html/bootstrap/cache
+    && chmod -R 775 /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/public/css
 
 # Set environment variable to allow Composer to run as root
 ENV COMPOSER_ALLOW_SUPERUSER=1
