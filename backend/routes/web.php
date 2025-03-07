@@ -15,14 +15,14 @@ Route::middleware('guest')->group(function () {
     Route::get('/admin/login', function () {
         return view('admin.login');
     })->name('admin.login');
-    Route::post('/admin/login', [AuthController::class, 'login'])->name('admin.login.post');
+    Route::post('/admin/login', [AuthController::class, 'webLogin'])->name('admin.login.post');
 });
 
 // Admin routes
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
-    Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
+    Route::post('/logout', [AuthController::class, 'webLogout'])->name('admin.logout');
     
     // Users (using AuthController for user management)
     Route::get('/users', [AuthController::class, 'index'])->name('users.index');

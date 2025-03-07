@@ -132,11 +132,14 @@ class AuthController extends Controller
         }
     }
 
-    // Logout
+    // API Logout
     public function logout(Request $request)
     {
         try {
-            $request->user()->currentAccessToken()->delete();
+            if ($request->user() && $request->user()->currentAccessToken()) {
+                $request->user()->currentAccessToken()->delete();
+            }
+            
             return response()->json([
                 'message' => 'Logged out successfully'
             ]);
@@ -147,6 +150,48 @@ class AuthController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    // Web Logout
+    public function webLogout(Request $request)
+    {
+        auth()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        
+        return redirect()->route('admin.login');
+    }
+
+    // Web Login
+    public function webLogin(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
+
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (!$user || !$user->isAdmin()) {
+            return back()->withErrors([
+                'email' => 'Only administrators can access this area.',
+            ])->withInput();
+        }
+
+        if (auth()->attempt($credentials)) {
+            $request->session()->regenerate();
+            return redirect()->intended('/admin');
+        }
+
+        return back()->withErrors([
+            'email' => 'The provided credentials do not match our records.',
+        ])->withInput();
+    }
+
+    // Web Login Form
+    public function showLoginForm()
+    {
+        return view('auth.login');
     }
 
     // Web Admin Methods - Add these new methods
