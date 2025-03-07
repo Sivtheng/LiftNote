@@ -82,7 +82,7 @@ class AuthController extends Controller
 
             // Load appropriate relationships based on role
             if ($user->isClient()) {
-                $user->load('clientProfile');
+                $user->load('progressLogs');
             } elseif ($user->isCoach()) {
                 $user->load('programs');
             }
@@ -115,9 +115,9 @@ class AuthController extends Controller
             
             // Load relationships based on user role
             if ($user->isClient()) {
-                $user->load(['clientProfile', 'progressLogs']);
+                $user->load('progressLogs');
             } elseif ($user->isCoach()) {
-                $user->load(['programs']);
+                $user->load('programs');
             }
 
             return response()->json([
