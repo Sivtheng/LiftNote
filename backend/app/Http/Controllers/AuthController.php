@@ -23,10 +23,10 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Validation failed',
-                'error' => $validator->errors()
-            ]);
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         try {
@@ -42,18 +42,18 @@ class AuthController extends Controller
 
             $token = $user->createToken('AuthToken')->plainTextToken;
 
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Client registered successfully',
                 'user' => $user,
                 'token' => $token
-            ], 'users.index');
+            ], 201);
 
         } catch (\Exception $e) {
             Log::error('Registration error: ' . $e->getMessage());
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Error during registration',
                 'error' => $e->getMessage()
-            ]);
+            ], 500);
         }
     }
 
