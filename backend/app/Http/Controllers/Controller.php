@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
-abstract class Controller
+use App\Traits\HandlesResponses;
+use Illuminate\Routing\Controller as BaseController;
+
+class Controller extends BaseController
 {
-    //
+    use HandlesResponses;
 }

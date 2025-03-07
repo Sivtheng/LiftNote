@@ -23,7 +23,10 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return $this->respondTo([
+                'message' => 'Validation failed',
+                'error' => $validator->errors()
+            ]);
         }
 
         try {
@@ -39,17 +42,18 @@ class AuthController extends Controller
 
             $token = $user->createToken('AuthToken')->plainTextToken;
 
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Client registered successfully',
                 'user' => $user,
-                'token' => $token,
-            ], 201);
+                'token' => $token
+            ], 'users.index');
+
         } catch (\Exception $e) {
             Log::error('Registration error: ' . $e->getMessage());
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error during registration',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
     }
 
@@ -142,6 +146,122 @@ class AuthController extends Controller
                 'message' => 'Error during logout',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    // Web Admin Methods - Add these new methods
+    public function index()
+    {
+        $users = User::latest()->paginate(10);
+        return view('admin.users.index', compact('users'));
+    }
+
+    public function create()
+    {
+        return view('admin.users.create');
+    }
+
+    public function store(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:8|confirmed',
+                'role' => 'required|in:client,coach,admin',
+                'phone_number' => 'nullable|string|max:20',
+                'bio' => 'nullable|string',
+                'profile_picture' => 'nullable|string',
+            ]);
+
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'role' => $validated['role'],
+                'phone_number' => $validated['phone_number'] ?? null,
+                'bio' => $validated['bio'] ?? null,
+                'profile_picture' => $validated['profile_picture'] ?? null,
+            ]);
+
+            return $this->respondTo([
+                'message' => 'User created successfully',
+                'user' => $user
+            ], 'users.index');
+        } catch (\Exception $e) {
+            return $this->respondTo([
+                'message' => 'Error creating user',
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function edit(User $user)
+    {
+        return view('admin.users.edit', compact('user'));
+    }
+
+    public function update(Request $request, User $user)
+    {
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+                'password' => 'nullable|string|min:8|confirmed',
+                'role' => 'required|in:client,coach,admin',
+                'phone_number' => 'nullable|string|max:20',
+                'bio' => 'nullable|string',
+                'profile_picture' => 'nullable|string',
+            ]);
+
+            $updateData = [
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'role' => $validated['role'],
+                'phone_number' => $validated['phone_number'] ?? $user->phone_number,
+                'bio' => $validated['bio'] ?? $user->bio,
+                'profile_picture' => $validated['profile_picture'] ?? $user->profile_picture,
+            ];
+
+            if (!empty($validated['password'])) {
+                $updateData['password'] = Hash::make($validated['password']);
+            }
+
+            $user->update($updateData);
+
+            return $this->respondTo([
+                'message' => 'User updated successfully',
+                'user' => $user
+            ], 'users.index');
+        } catch (\Exception $e) {
+            return $this->respondTo([
+                'message' => 'Error updating user',
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function destroy(User $user)
+    {
+        try {
+            if ($user->id === auth()->id()) {
+                return $this->respondTo([
+                    'message' => 'Cannot delete your own account',
+                    'error' => 'Self deletion not allowed'
+                ]);
+            }
+
+            // Use regular delete() since we want to keep soft deletes for data integrity
+            $user->delete();
+
+            return $this->respondTo([
+                'message' => 'User deleted successfully'
+            ], 'users.index');
+        } catch (\Exception $e) {
+            return $this->respondTo([
+                'message' => 'Error deleting user',
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

@@ -19,7 +19,9 @@ class CommentController extends Controller
             if (!$user->isAdmin() && 
                 $program->coach_id !== $user->id && 
                 $program->client_id !== $user->id) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+                return $this->respondTo([
+                    'message' => 'Unauthorized'
+                ]);
             }
 
             // Validate input
@@ -34,15 +36,15 @@ class CommentController extends Controller
                 'program_id' => $program->id
             ]);
 
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Comment added successfully',
                 'comment' => $comment->load(['user'])
-            ], 201);
+            ], 'programs.show');
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error adding comment',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
     }
 
@@ -86,24 +88,27 @@ class CommentController extends Controller
         try {
             // Verify the comment belongs to this program
             if ($comment->program_id !== $program->id) {
-                return response()->json(['message' => 'Comment not found'], 404);
+                return $this->respondTo([
+                    'message' => 'Comment not found'
+                ]);
             }
 
             // Verify ownership or admin
             if ($comment->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+                return $this->respondTo([
+                    'message' => 'Unauthorized'
+                ]);
             }
 
-            $comment->delete();
-
-            return response()->json([
+            $comment->forceDelete(); // Use forceDelete to ensure actual deletion
+            return $this->respondTo([
                 'message' => 'Comment deleted successfully'
-            ]);
+            ], 'programs.show');
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error deleting comment',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
     }
 
@@ -185,24 +190,27 @@ class CommentController extends Controller
         try {
             // Verify the comment belongs to this progress log
             if ($comment->progress_log_id !== $progressLog->id) {
-                return response()->json(['message' => 'Comment not found'], 404);
+                return $this->respondTo([
+                    'message' => 'Comment not found'
+                ]);
             }
 
             // Verify ownership or admin
             if ($comment->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+                return $this->respondTo([
+                    'message' => 'Unauthorized'
+                ]);
             }
 
-            $comment->delete();
-
-            return response()->json([
+            $comment->forceDelete(); // Use forceDelete to ensure actual deletion
+            return $this->respondTo([
                 'message' => 'Comment deleted successfully'
-            ]);
+            ], 'progress-logs.show');
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error deleting comment',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
     }
 

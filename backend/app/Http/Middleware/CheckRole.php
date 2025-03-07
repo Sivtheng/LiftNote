@@ -11,7 +11,10 @@ class CheckRole
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
         if (!$request->user()) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Unauthenticated.'], 401);
+            }
+            return redirect()->route('admin.login');
         }
 
         // Check if user has any of the required roles
@@ -22,6 +25,9 @@ class CheckRole
             }
         }
 
-        return response()->json(['message' => 'Unauthorized. Required role not found.'], 403);
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Unauthorized. Required role not found.'], 403);
+        }
+        return redirect()->route('admin.login')->with('error', 'Unauthorized access.');
     }
 } 

@@ -6,26 +6,28 @@ use App\Models\User;
 use App\Models\Program;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\HandlesResponses;
 
 class ProgramController extends Controller
 {
+    use HandlesResponses;
+
     // Create a new program for a client (Coach/Admin only)
     public function create(Request $request, User $client)
     {
         try {
-            // Verify the target user is a client
             if (!$client->isClient()) {
-                return response()->json(['message' => 'Target user is not a client'], 403);
+                return $this->respondTo([
+                    'message' => 'Target user is not a client'
+                ]);
             }
 
-            // Validate input
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'description' => 'required|string',
                 'status' => 'required|in:active,completed,cancelled'
             ]);
 
-            // Create program
             $program = Program::create([
                 'title' => $validated['title'],
                 'description' => $validated['description'],
@@ -34,15 +36,15 @@ class ProgramController extends Controller
                 'client_id' => $client->id
             ]);
 
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Program created successfully',
                 'program' => $program->load(['coach', 'client'])
-            ], 201);
+            ]);
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error creating program',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
     }
 
@@ -50,30 +52,31 @@ class ProgramController extends Controller
     public function update(Request $request, Program $program)
     {
         try {
-            // Verify the coach owns this program
-            if ($program->coach_id !== Auth::id() && !Auth::user()->isAdmin()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+            if (!request()->expectsJson() && !Auth::user()->isAdmin()) {
+                return $this->respondTo([
+                    'message' => 'Unauthorized'
+                ]);
             }
 
-            // Validate input
             $validated = $request->validate([
-                'title' => 'sometimes|string|max:255',
-                'description' => 'sometimes|string',
-                'status' => 'sometimes|in:active,completed,cancelled'
+                'title' => 'required|string|max:255',
+                'description' => 'required|string',
+                'coach_id' => 'required|exists:users,id',
+                'client_id' => 'required|exists:users,id',
+                'status' => 'required|in:active,completed,cancelled'
             ]);
 
-            // Update program
             $program->update($validated);
 
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Program updated successfully',
                 'program' => $program->fresh(['coach', 'client'])
-            ]);
+            ], 'programs.index');
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error updating program',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
     }
 
@@ -88,12 +91,14 @@ class ProgramController extends Controller
                 }])
                 ->get();
 
-            return response()->json($programs);
+            return $this->respondTo([
+                'programs' => $programs
+            ]);
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error fetching programs',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
     }
 
@@ -105,57 +110,111 @@ class ProgramController extends Controller
                 ->with(['coach', 'progressLogs'])
                 ->get();
 
-            return response()->json($programs);
+            return $this->respondTo([
+                'programs' => $programs
+            ]);
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error fetching programs',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
     }
 
     // Get specific program details
     public function show(Program $program)
     {
-        try {
-            // Verify user has access to this program
-            $user = Auth::user();
-            if (!$user->isAdmin() && 
-                $program->coach_id !== $user->id && 
-                $program->client_id !== $user->id) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+        if (request()->expectsJson()) {
+            try {
+                $user = Auth::user();
+                if (!$user->isAdmin() && 
+                    $program->coach_id !== $user->id && 
+                    $program->client_id !== $user->id) {
+                    return $this->respondTo([
+                        'message' => 'Unauthorized'
+                    ]);
+                }
+
+                return $this->respondTo([
+                    'program' => $program->load(['coach', 'client', 'progressLogs'])
+                ]);
+            } catch (\Exception $e) {
+                return $this->respondTo([
+                    'message' => 'Error fetching program',
+                    'error' => $e->getMessage()
+                ]);
             }
-
-            $program->load(['coach', 'client', 'progressLogs']);
-
-            return response()->json($program);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error fetching program',
-                'error' => $e->getMessage()
-            ], 500);
         }
+
+        $program->load(['coach', 'client', 'progressLogs']);
+        return view('admin.programs.show', compact('program'));
     }
 
     // Delete a program (Coach/Admin only)
-    public function delete(Program $program)
+    public function destroy(Program $program)
     {
         try {
-            // Verify the coach owns this program
-            if ($program->coach_id !== Auth::id() && !Auth::user()->isAdmin()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+            if (!Auth::user()->isAdmin() && $program->coach_id !== Auth::id()) {
+                return $this->respondTo([
+                    'message' => 'Unauthorized'
+                ]);
             }
 
+            // Delete related records first (if needed)
+            $program->progressLogs()->delete();
+            $program->comments()->delete();
+            
+            // Delete the program
             $program->delete();
 
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Program deleted successfully'
-            ]);
+            ], 'programs.index');
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error deleting program',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
+    }
+
+    public function index()
+    {
+        $programs = Program::with(['coach', 'client'])
+            ->latest()
+            ->paginate(10);
+        return view('admin.programs.index', compact('programs'));
+    }
+
+    public function store(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'required|string',
+                'coach_id' => 'required|exists:users,id',
+                'client_id' => 'required|exists:users,id',
+                'status' => 'required|in:active,completed,cancelled'
+            ]);
+
+            $program = Program::create($validated);
+
+            return $this->respondTo([
+                'message' => 'Program created successfully',
+                'program' => $program
+            ], 'programs.index');
+        } catch (\Exception $e) {
+            return $this->respondTo([
+                'message' => 'Error creating program',
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function edit(Program $program)
+    {
+        $coaches = User::where('role', 'coach')->get();
+        $clients = User::where('role', 'client')->get();
+        return view('admin.programs.edit', compact('program', 'coaches', 'clients'));
     }
 }

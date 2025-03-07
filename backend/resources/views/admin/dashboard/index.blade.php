@@ -5,7 +5,7 @@
 @section('content')
 <div class="stats-grid">
     <!-- Users Card -->
-    <div class="stat-card">
+    <a href="{{ route('users.index') }}" class="stat-card">
         <div class="stat-card-content">
             <div class="stat-icon blue">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -17,10 +17,10 @@
                 <p>{{ $totalUsers }}</p>
             </div>
         </div>
-    </div>
+    </a>
 
     <!-- Programs Card -->
-    <div class="stat-card">
+    <a href="{{ route('programs.index') }}" class="stat-card">
         <div class="stat-card-content">
             <div class="stat-icon green">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,10 +32,10 @@
                 <p>{{ $totalPrograms }}</p>
             </div>
         </div>
-    </div>
+    </a>
 
     <!-- Progress Logs Card -->
-    <div class="stat-card">
+    <a href="{{ route('progress-logs.index') }}" class="stat-card">
         <div class="stat-card-content">
             <div class="stat-icon purple">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,10 +47,10 @@
                 <p>{{ $totalProgressLogs }}</p>
             </div>
         </div>
-    </div>
+    </a>
 
     <!-- Questionnaires Card -->
-    <div class="stat-card">
+    <a href="{{ route('questionnaires.index') }}" class="stat-card">
         <div class="stat-card-content">
             <div class="stat-icon yellow">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -62,31 +62,6 @@
                 <p>{{ $totalQuestionnaires }}</p>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- Recent Activity -->
-<div class="activity-section">
-    <h3 class="section-title">Recent Activity</h3>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>User</th>
-                    <th>Action</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($recentActivity as $activity)
-                <tr>
-                    <td>{{ $activity->user->name }}</td>
-                    <td>{{ $activity->description }}</td>
-                    <td>{{ $activity->created_at->diffForHumans() }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
-    </div>
+    </a>
 </div>
 @endsection 

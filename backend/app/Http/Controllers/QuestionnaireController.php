@@ -58,7 +58,9 @@ class QuestionnaireController extends Controller
             $user = Auth::user();
             
             if (!$user->isClient()) {
-                return response()->json(['message' => 'Only clients can submit questionnaires'], 403);
+                return $this->respondTo([
+                    'message' => 'Only clients can submit questionnaires'
+                ]);
             }
 
             // Validate input
@@ -73,10 +75,10 @@ class QuestionnaireController extends Controller
             
             $missingKeys = array_diff($requiredKeys, $providedKeys);
             if (!empty($missingKeys)) {
-                return response()->json([
+                return $this->respondTo([
                     'message' => 'Missing answers for some questions',
-                    'missing_questions' => $missingKeys
-                ], 422);
+                    'error' => 'Missing questions: ' . implode(', ', $missingKeys)
+                ]);
             }
 
             // Update or create questionnaire
@@ -88,15 +90,16 @@ class QuestionnaireController extends Controller
                 ]
             );
 
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Questionnaire submitted successfully',
                 'questionnaire' => $questionnaire
             ]);
+
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error submitting questionnaire',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
         }
     }
 
@@ -107,11 +110,15 @@ class QuestionnaireController extends Controller
             $user = Auth::user();
             
             if (!$user->isAdmin() && !$user->isCoach()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
+                return $this->respondTo([
+                    'message' => 'Unauthorized'
+                ]);
             }
 
             if (!$client->isClient()) {
-                return response()->json(['message' => 'User is not a client'], 403);
+                return $this->respondTo([
+                    'message' => 'User is not a client'
+                ]);
             }
 
             // Load the questionnaire with client relationship
@@ -120,7 +127,7 @@ class QuestionnaireController extends Controller
                 ->first();
 
             if (!$questionnaire) {
-                return response()->json([
+                return $this->respondTo([
                     'message' => 'Client has not filled out the questionnaire yet',
                     'questions' => $this->standardQuestions,
                     'questionnaire' => null,
@@ -128,16 +135,127 @@ class QuestionnaireController extends Controller
                 ]);
             }
 
-            return response()->json([
+            return $this->respondTo([
                 'questions' => $this->standardQuestions,
                 'questionnaire' => $questionnaire,
                 'client' => $client
             ]);
         } catch (\Exception $e) {
-            return response()->json([
+            return $this->respondTo([
                 'message' => 'Error fetching client questionnaire',
                 'error' => $e->getMessage()
-            ], 500);
+            ]);
+        }
+    }
+
+    public function index()
+    {
+        $questionnaires = Questionnaire::with('client')->latest()->paginate(10);
+        return view('admin.questionnaires.index', compact('questionnaires'));
+    }
+
+    public function destroy(Questionnaire $questionnaire)
+    {
+        try {
+            $questionnaire->delete();
+            return $this->respondTo([
+                'message' => 'Questionnaire deleted successfully'
+            ], 'questionnaires.index');
+        } catch (\Exception $e) {
+            return $this->respondTo([
+                'message' => 'Error deleting questionnaire',
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    // Add this new method for admin view
+    public function adminShow(Questionnaire $questionnaire)
+    {
+        $questionnaire->load('client');
+        return view('admin.questionnaires.show', [
+            'questionnaire' => $questionnaire,
+            'questions' => $this->standardQuestions
+        ]);
+    }
+
+    public function adminEdit(Questionnaire $questionnaire)
+    {
+        $clients = User::where('role', 'client')->get();
+        return view('admin.questionnaires.edit', [
+            'questionnaire' => $questionnaire,
+            'questions' => $this->standardQuestions,
+            'clients' => $clients
+        ]);
+    }
+
+    public function adminUpdate(Request $request, Questionnaire $questionnaire)
+    {
+        $validated = $request->validate([
+            'client_id' => 'required|exists:users,id',
+            'status' => 'required|in:pending,completed,reviewed',
+            'answers' => 'required|array',
+            'answers.*' => 'required|string',
+        ]);
+
+        // Ensure all questions are answered
+        $requiredKeys = array_keys($this->standardQuestions);
+        $providedKeys = array_keys($validated['answers']);
+        
+        $missingKeys = array_diff($requiredKeys, $providedKeys);
+        if (!empty($missingKeys)) {
+            return back()
+                ->withErrors(['answers' => 'Missing answers for some questions'])
+                ->withInput();
+        }
+
+        $questionnaire->update($validated);
+        return redirect()
+            ->route('questionnaires.show', $questionnaire)
+            ->with('success', 'Questionnaire updated successfully');
+    }
+
+    public function adminCreate()
+    {
+        $clients = User::where('role', 'client')->get();
+        return view('admin.questionnaires.create', [
+            'questions' => $this->standardQuestions,
+            'clients' => $clients
+        ]);
+    }
+
+    public function adminStore(Request $request)
+    {
+        $validated = $request->validate([
+            'client_id' => 'required|exists:users,id',
+            'status' => 'required|in:pending,completed,reviewed',
+            'answers' => 'required|array',
+            'answers.*' => 'required|string',
+        ]);
+
+        // Ensure all questions are answered
+        $requiredKeys = array_keys($this->standardQuestions);
+        $providedKeys = array_keys($validated['answers']);
+        
+        $missingKeys = array_diff($requiredKeys, $providedKeys);
+        if (!empty($missingKeys)) {
+            return $this->respondTo([
+                'message' => 'Missing answers for some questions',
+                'error' => 'Missing required answers'
+            ]);
+        }
+
+        try {
+            $questionnaire = Questionnaire::create($validated);
+            return $this->respondTo([
+                'message' => 'Questionnaire created successfully',
+                'questionnaire' => $questionnaire
+            ], 'questionnaires.index');
+        } catch (\Exception $e) {
+            return $this->respondTo([
+                'message' => 'Error creating questionnaire',
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }
