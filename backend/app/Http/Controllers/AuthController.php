@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class AuthController extends Controller
 {
@@ -48,6 +49,10 @@ class AuthController extends Controller
                 'token' => $token
             ], 201);
 
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'User not found',
+            ], 404);
         } catch (\Exception $e) {
             Log::error('Registration error: ' . $e->getMessage());
             return response()->json([
@@ -97,6 +102,10 @@ class AuthController extends Controller
                 'token' => $token,
                 'expires_at' => now()->addHour()->toDateTimeString()
             ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
         } catch (\Exception $e) {
             Log::error('Login error: ' . $e->getMessage());
             return response()->json([
@@ -128,6 +137,10 @@ class AuthController extends Controller
             return response()->json([
                 'user' => $user,
             ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'User profile not found'
+            ], 404);
         } catch (\Exception $e) {
             Log::error('Profile fetch error: ' . $e->getMessage());
             return response()->json([
@@ -148,6 +161,10 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Logged out successfully'
             ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
         } catch (\Exception $e) {
             Log::error('Logout error: ' . $e->getMessage());
             return response()->json([
@@ -160,11 +177,19 @@ class AuthController extends Controller
     // Web Logout
     public function webLogout(Request $request)
     {
-        auth()->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        
-        return redirect()->route('admin.login');
+        try {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            
+            return redirect()->route('admin.login');
+        } catch (ModelNotFoundException $e) {
+            return redirect()->route('admin.login')
+                ->with('error', 'User not found');
+        } catch (\Exception $e) {
+            return redirect()->route('admin.login')
+                ->with('error', 'Error during logout');
+        }
     }
 
     // Web Login
@@ -202,8 +227,14 @@ class AuthController extends Controller
     // Web Admin Methods - Add these new methods
     public function index()
     {
-        $users = User::latest()->paginate(10);
-        return view('admin.users.index', compact('users'));
+        try {
+            $users = User::latest()->paginate(10);
+            return view('admin.users.index', compact('users'));
+        } catch (ModelNotFoundException $e) {
+            return back()->with('error', 'Users not found');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error fetching users');
+        }
     }
 
     public function create()
@@ -238,6 +269,11 @@ class AuthController extends Controller
                 'message' => 'User created successfully',
                 'user' => $user
             ], 'users.index');
+        } catch (ModelNotFoundException $e) {
+            return $this->respondTo([
+                'message' => 'User not found',
+                'error' => $e->getMessage()
+            ]);
         } catch (\Exception $e) {
             return $this->respondTo([
                 'message' => 'Error creating user',
@@ -283,7 +319,23 @@ class AuthController extends Controller
                 'message' => 'User updated successfully',
                 'user' => $user
             ], 'users.index');
+        } catch (ModelNotFoundException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'User not found'
+                ], 404);
+            }
+            return $this->respondTo([
+                'message' => 'User not found',
+                'error' => $e->getMessage()
+            ]);
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Error updating user',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
             return $this->respondTo([
                 'message' => 'Error updating user',
                 'error' => $e->getMessage()
@@ -307,7 +359,23 @@ class AuthController extends Controller
             return $this->respondTo([
                 'message' => 'User deleted successfully'
             ], 'users.index');
+        } catch (ModelNotFoundException $e) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'message' => 'User not found'
+                ], 404);
+            }
+            return $this->respondTo([
+                'message' => 'User not found',
+                'error' => $e->getMessage()
+            ]);
         } catch (\Exception $e) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'message' => 'Error deleting user',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
             return $this->respondTo([
                 'message' => 'Error deleting user',
                 'error' => $e->getMessage()
@@ -354,6 +422,10 @@ class AuthController extends Controller
                 'message' => 'Profile updated successfully',
                 'user' => $user
             ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
         } catch (\Exception $e) {
             Log::error('Profile update error: ' . $e->getMessage());
             return response()->json([
@@ -377,6 +449,10 @@ class AuthController extends Controller
             return response()->json([
                 'message' => 'Profile deleted successfully'
             ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
         } catch (\Exception $e) {
             Log::error('Profile deletion error: ' . $e->getMessage());
             return response()->json([
