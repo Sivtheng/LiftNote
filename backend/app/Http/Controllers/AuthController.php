@@ -314,4 +314,75 @@ class AuthController extends Controller
             ]);
         }
     }
+
+    public function updateProfile(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            $validator = Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+                'password' => 'nullable|string|min:8|confirmed',
+                'phone_number' => 'nullable|string|max:20',
+                'bio' => 'nullable|string',
+                'profile_picture' => 'nullable|string',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $updateData = [
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone_number' => $request->phone_number,
+                'bio' => $request->bio,
+                'profile_picture' => $request->profile_picture,
+            ];
+
+            if ($request->filled('password')) {
+                $updateData['password'] = Hash::make($request->password);
+            }
+
+            $user->update($updateData);
+
+            return response()->json([
+                'message' => 'Profile updated successfully',
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Profile update error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error updating profile',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function deleteProfile(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Delete all tokens first
+            $user->tokens()->delete();
+            
+            // Delete the user
+            $user->delete();
+
+            return response()->json([
+                'message' => 'Profile deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Profile deletion error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error deleting profile',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
