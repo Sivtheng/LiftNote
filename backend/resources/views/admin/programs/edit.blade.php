@@ -69,7 +69,6 @@
         </div>
 
         <button type="submit" class="btn btn-primary">Update Program</button>
-        <a href="{{ route('programs.index') }}" class="btn btn-secondary">Cancel</a>
     </form>
 </div>
 @endsection

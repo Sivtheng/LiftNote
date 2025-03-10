@@ -40,7 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/users/{client}', [ProgramController::class, 'create']);
             Route::get('/coach', [ProgramController::class, 'getCoachPrograms']);
             Route::put('/{program}', [ProgramController::class, 'update']);
-            Route::delete('/{program}', [ProgramController::class, 'delete']);
+            Route::delete('/{program}', [ProgramController::class, 'destroy']);
         });
 
         // Client Routes

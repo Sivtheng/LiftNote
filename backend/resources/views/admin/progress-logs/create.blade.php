@@ -61,7 +61,6 @@
         </div>
 
         <button type="submit" class="btn btn-primary">Create Progress Log</button>
-        <a href="{{ route('progress-logs.index') }}" class="btn btn-secondary">Cancel</a>
     </form>
 </div>
 @endsection

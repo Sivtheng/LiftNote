@@ -49,7 +49,6 @@
         @endforeach
 
         <button type="submit" class="btn btn-primary">Update Questionnaire</button>
-        <a href="{{ route('questionnaires.index') }}" class="btn btn-secondary">Cancel</a>
     </form>
 </div>
 @endsection

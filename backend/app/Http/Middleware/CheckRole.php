@@ -17,6 +17,11 @@ class CheckRole
             return redirect()->route('admin.login');
         }
 
+        // If user is admin, allow access to everything
+        if ($request->user()->isAdmin()) {
+            return $next($request);
+        }
+
         // Check if user has any of the required roles
         foreach ($roles as $role) {
             $methodName = 'is' . ucfirst($role);

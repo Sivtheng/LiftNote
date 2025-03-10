@@ -65,7 +65,6 @@
         </div>
 
         <button type="submit" class="btn btn-primary">Create Program</button>
-        <a href="{{ route('programs.index') }}" class="btn btn-secondary">Cancel</a>
     </form>
 </div>
 @endsection
