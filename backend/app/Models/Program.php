@@ -42,4 +42,10 @@ class Program extends Model
     {
         return $this->hasMany(Comment::class);
     }
+
+    // Get all users associated with this program (coach and client)
+    public function users()
+    {
+        return User::whereIn('id', [$this->coach_id, $this->client_id]);
+    }
 }

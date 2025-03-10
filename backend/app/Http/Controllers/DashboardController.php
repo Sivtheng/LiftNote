@@ -12,15 +12,12 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        $data = [
+        return view('admin.dashboard.index', [
             'totalUsers' => User::count(),
             'totalPrograms' => Program::count(),
             'totalProgressLogs' => ProgressLog::count(),
             'totalQuestionnaires' => Questionnaire::count(),
-            'recentActivity' => $this->getRecentActivity()
-        ];
-
-        return view('admin.dashboard.index', $data);
+        ]);
     }
 
     private function getRecentActivity()
