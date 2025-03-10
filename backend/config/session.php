@@ -32,9 +32,8 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
-
-    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
+    'lifetime' => 60, // Session lifetime in minutes (1 hour)
+    'expire_on_close' => true, // Session expires when browser closes
 
     /*
     |--------------------------------------------------------------------------

@@ -78,7 +78,11 @@ class AuthController extends Controller
                 ], 401);
             }
 
-            $token = $user->createToken('AuthToken')->plainTextToken;
+            // Delete any existing tokens for this user
+            $user->tokens()->delete();
+
+            // Create new token with 1 hour expiration
+            $token = $user->createToken('AuthToken', ['*'], now()->addHour())->plainTextToken;
 
             // Load appropriate relationships based on role
             if ($user->isClient()) {
@@ -91,6 +95,7 @@ class AuthController extends Controller
                 'message' => 'Logged in successfully',
                 'user' => $user,
                 'token' => $token,
+                'expires_at' => now()->addHour()->toDateTimeString()
             ]);
         } catch (\Exception $e) {
             Log::error('Login error: ' . $e->getMessage());
