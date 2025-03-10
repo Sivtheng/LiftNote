@@ -27,10 +27,12 @@ This command will build and start the following services in the background:
 - Backend: The Laravel backend API (accessible at <http://localhost:8000>)
 - Database: MySQL
 
-### Generate the Laravel Application Key (First time running the application)
+### Backend set up
 
-- ```docker-compose exec backend php artisan key:generate```
-- copy the key in the output and put in the backend .env yourself
+- ```composer install```
+- In the container, do ```php artisan key:generate```
+- copy the key in the output and put in the backend .env yourself if needed but it usually does it automatically.
+- ```php artisan migrate```
 
 ### Set Up Environment Variables
 
