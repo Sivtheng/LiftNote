@@ -30,7 +30,9 @@ class QuestionnaireController extends Controller
             $user = Auth::user();
             
             if (!$user->isClient()) {
-                return response()->json(['message' => 'Only clients can access questionnaires'], 403);
+                return response()->json([
+                    'message' => 'Only clients can access questionnaires'
+                ], 403);
             }
 
             // Get or create questionnaire for the client
@@ -58,9 +60,9 @@ class QuestionnaireController extends Controller
             $user = Auth::user();
             
             if (!$user->isClient()) {
-                return $this->respondTo([
+                return response()->json([
                     'message' => 'Only clients can submit questionnaires'
-                ]);
+                ], 403);
             }
 
             // Validate input
@@ -75,10 +77,10 @@ class QuestionnaireController extends Controller
             
             $missingKeys = array_diff($requiredKeys, $providedKeys);
             if (!empty($missingKeys)) {
-                return $this->respondTo([
+                return response()->json([
                     'message' => 'Missing answers for some questions',
                     'error' => 'Missing questions: ' . implode(', ', $missingKeys)
-                ]);
+                ], 422);
             }
 
             // Update or create questionnaire
@@ -90,16 +92,16 @@ class QuestionnaireController extends Controller
                 ]
             );
 
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Questionnaire submitted successfully',
                 'questionnaire' => $questionnaire
-            ]);
+            ], 200);
 
         } catch (\Exception $e) {
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Error submitting questionnaire',
                 'error' => $e->getMessage()
-            ]);
+            ], 500);
         }
     }
 
@@ -110,15 +112,15 @@ class QuestionnaireController extends Controller
             $user = Auth::user();
             
             if (!$user->isAdmin() && !$user->isCoach()) {
-                return $this->respondTo([
+                return response()->json([
                     'message' => 'Unauthorized'
-                ]);
+                ], 403);
             }
 
             if (!$client->isClient()) {
-                return $this->respondTo([
+                return response()->json([
                     'message' => 'User is not a client'
-                ]);
+                ], 422);
             }
 
             // Load the questionnaire with client relationship
@@ -127,7 +129,7 @@ class QuestionnaireController extends Controller
                 ->first();
 
             if (!$questionnaire) {
-                return $this->respondTo([
+                return response()->json([
                     'message' => 'Client has not filled out the questionnaire yet',
                     'questions' => $this->standardQuestions,
                     'questionnaire' => null,
@@ -135,16 +137,16 @@ class QuestionnaireController extends Controller
                 ]);
             }
 
-            return $this->respondTo([
+            return response()->json([
                 'questions' => $this->standardQuestions,
                 'questionnaire' => $questionnaire,
                 'client' => $client
             ]);
         } catch (\Exception $e) {
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Error fetching client questionnaire',
                 'error' => $e->getMessage()
-            ]);
+            ], 500);
         }
     }
 
