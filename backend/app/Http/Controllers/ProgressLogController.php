@@ -7,6 +7,7 @@ use App\Models\ProgressLog;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ProgressLogController extends Controller
 {
@@ -38,6 +39,10 @@ class ProgressLogController extends Controller
                 'message' => 'Progress log created successfully',
                 'progress_log' => $progressLog->load(['client', 'program'])
             ], 201);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Program not found'
+            ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error creating progress log',

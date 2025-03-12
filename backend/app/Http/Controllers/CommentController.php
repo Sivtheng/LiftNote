@@ -7,6 +7,7 @@ use App\Models\ProgressLog;
 use App\Models\Comment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class CommentController extends Controller
 {
@@ -19,9 +20,9 @@ class CommentController extends Controller
             if (!$user->isAdmin() && 
                 $program->coach_id !== $user->id && 
                 $program->client_id !== $user->id) {
-                return $this->respondTo([
+                return response()->json([
                     'message' => 'Unauthorized'
-                ]);
+                ], 403);
             }
 
             // Validate input
@@ -36,15 +37,19 @@ class CommentController extends Controller
                 'program_id' => $program->id
             ]);
 
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Comment added successfully',
                 'comment' => $comment->load(['user'])
-            ], 'programs.show');
+            ], 201);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Program not found'
+            ], 404);
         } catch (\Exception $e) {
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Error adding comment',
                 'error' => $e->getMessage()
-            ]);
+            ], 500);
         }
     }
 

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Questionnaire;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class QuestionnaireController extends Controller
 {
@@ -45,6 +46,10 @@ class QuestionnaireController extends Controller
                 'questions' => $this->standardQuestions,
                 'questionnaire' => $questionnaire
             ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Questionnaire not found'
+            ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error fetching questionnaire',
