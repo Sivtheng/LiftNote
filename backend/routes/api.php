@@ -55,7 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::prefix('/{program}/progress')->group(function () {
             // Client Routes
             Route::middleware('role:client')->group(function () {
-                Route::post('/', [ProgressLogController::class, 'create']);
+                Route::post('/', [ProgressLogController::class, 'createForProgram']);
             });
 
             // Shared Routes (authorized in controller)

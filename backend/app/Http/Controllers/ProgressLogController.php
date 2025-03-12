@@ -15,9 +15,9 @@ class ProgressLogController extends Controller
     {
         try {
             if ($program->client_id !== Auth::id()) {
-                return $this->respondTo([
+                return response()->json([
                     'message' => 'Unauthorized'
-                ]);
+                ], 403);
             }
 
             $validated = $request->validate([
@@ -34,15 +34,15 @@ class ProgressLogController extends Controller
                 'program_id' => $program->id
             ]);
 
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Progress log created successfully',
                 'progress_log' => $progressLog->load(['client', 'program'])
-            ]);
+            ], 201);
         } catch (\Exception $e) {
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Error creating progress log',
                 'error' => $e->getMessage()
-            ]);
+            ], 500);
         }
     }
 
@@ -53,9 +53,9 @@ class ProgressLogController extends Controller
             if (!$user->isAdmin() && 
                 $program->coach_id !== $user->id && 
                 $program->client_id !== $user->id) {
-                return $this->respondTo([
+                return response()->json([
                     'message' => 'Unauthorized'
-                ]);
+                ], 403);
             }
 
             $logs = $program->progressLogs()
@@ -63,14 +63,14 @@ class ProgressLogController extends Controller
                 ->orderBy('date', 'desc')
                 ->get();
 
-            return $this->respondTo([
+            return response()->json([
                 'logs' => $logs
             ]);
         } catch (\Exception $e) {
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Error fetching progress logs',
                 'error' => $e->getMessage()
-            ]);
+            ], 500);
         }
     }
 
@@ -125,19 +125,19 @@ class ProgressLogController extends Controller
                 if (!$user->isAdmin() && 
                     $program->coach_id !== $user->id && 
                     $progressLog->client_id !== $user->id) {
-                    return $this->respondTo([
+                    return response()->json([
                         'message' => 'Unauthorized'
-                    ]);
+                    ], 403);
                 }
 
-                return $this->respondTo([
+                return response()->json([
                     'progress_log' => $progressLog->load(['client', 'program', 'comments'])
                 ]);
             } catch (\Exception $e) {
-                return $this->respondTo([
+                return response()->json([
                     'message' => 'Error fetching progress log',
                     'error' => $e->getMessage()
-                ]);
+                ], 500);
             }
         }
 
@@ -157,6 +157,30 @@ class ProgressLogController extends Controller
     public function update(Request $request, ProgressLog $progressLog)
     {
         try {
+            if (request()->expectsJson()) {
+                // API request
+                $user = Auth::user();
+                if (!$user->isAdmin() && $progressLog->client_id !== $user->id) {
+                    return response()->json([
+                        'message' => 'Unauthorized'
+                    ], 403);
+                }
+
+                $validated = $request->validate([
+                    'title' => 'required|string|max:255',
+                    'description' => 'required|string',
+                    'date' => 'required|date'
+                ]);
+
+                $progressLog->update($validated);
+
+                return response()->json([
+                    'message' => 'Progress log updated successfully',
+                    'progress_log' => $progressLog->fresh(['client', 'program'])
+                ]);
+            }
+
+            // Web request
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'description' => 'required|string',
@@ -172,6 +196,12 @@ class ProgressLogController extends Controller
                 'progress_log' => $progressLog->fresh(['client', 'program'])
             ], 'progress-logs.index');
         } catch (\Exception $e) {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'message' => 'Error updating progress log',
+                    'error' => $e->getMessage()
+                ], 500);
+            }
             return $this->respondTo([
                 'message' => 'Error updating progress log',
                 'error' => $e->getMessage()
@@ -196,6 +226,33 @@ class ProgressLogController extends Controller
                 'message' => 'Error deleting progress log',
                 'error' => $e->getMessage()
             ]);
+        }
+    }
+
+    public function delete(ProgressLog $progressLog)
+    {
+        try {
+            $user = Auth::user();
+            if (!$user->isAdmin() && $progressLog->client_id !== $user->id) {
+                return response()->json([
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            // Delete related comments first
+            $progressLog->comments()->delete();
+            
+            // Delete the progress log
+            $progressLog->delete();
+
+            return response()->json([
+                'message' => 'Progress log deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error deleting progress log',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 }
