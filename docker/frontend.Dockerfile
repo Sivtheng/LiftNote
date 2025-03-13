@@ -11,11 +11,8 @@ RUN npm install
 # Copy the rest of the app
 COPY ./frontend .
 
-# Build the Next.js app
-RUN npm run build
-
 # Expose the app port
 EXPOSE 3000
 
-# Start the Next.js server
-CMD ["npm", "run", "start"]
+# Start the Next.js server in development mode
+CMD ["npm", "run", "dev"]
