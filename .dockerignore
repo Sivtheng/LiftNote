@@ -1,0 +1,6 @@
+.git
+**/node_modules
+**/dist
+**/.next
+**/out
+**/.cache
