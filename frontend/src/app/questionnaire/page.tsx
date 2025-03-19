@@ -261,7 +261,7 @@ export default function QuestionnairePage() {
                                 type="text"
                                 value={formData.key}
                                 onChange={(e) => setFormData({ ...formData, key: e.target.value })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
                                 required
                             />
                         </div>
@@ -272,7 +272,7 @@ export default function QuestionnairePage() {
                                 type="text"
                                 value={formData.question}
                                 onChange={(e) => setFormData({ ...formData, question: e.target.value })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
                                 required
                             />
                         </div>
@@ -282,7 +282,7 @@ export default function QuestionnairePage() {
                             <select
                                 value={formData.type}
                                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
                             >
                                 <option value="text">Text</option>
                                 <option value="number">Number</option>
@@ -293,13 +293,43 @@ export default function QuestionnairePage() {
 
                         {formData.type === 'select' && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Options (one per line)</label>
-                                <textarea
-                                    value={formData.options.join('\n')}
-                                    onChange={(e) => setFormData({ ...formData, options: e.target.value.split('\n').filter(Boolean) })}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    rows={4}
-                                />
+                                <label className="block text-sm font-medium text-gray-700">Options</label>
+                                <div className="space-y-2 mt-1">
+                                    {formData.options.map((option, index) => (
+                                        <div key={index} className="flex items-center gap-2">
+                                            <input
+                                                type="text"
+                                                value={option}
+                                                onChange={(e) => {
+                                                    const newOptions = [...formData.options];
+                                                    newOptions[index] = e.target.value;
+                                                    setFormData({ ...formData, options: newOptions });
+                                                }}
+                                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
+                                                placeholder={`Option ${index + 1}`}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newOptions = formData.options.filter((_, i) => i !== index);
+                                                    setFormData({ ...formData, options: newOptions });
+                                                }}
+                                                className="text-red-600 hover:text-red-900"
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setFormData({ ...formData, options: [...formData.options, ''] });
+                                        }}
+                                        className="text-indigo-600 hover:text-indigo-900 text-sm"
+                                    >
+                                        + Add Option
+                                    </button>
+                                </div>
                             </div>
                         )}
 
@@ -317,9 +347,15 @@ export default function QuestionnairePage() {
                             <label className="block text-sm font-medium text-gray-700">Order</label>
                             <input
                                 type="number"
-                                value={formData.order}
-                                onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                value={formData.order || ''}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setFormData({ 
+                                        ...formData, 
+                                        order: value === '' ? 0 : parseInt(value)
+                                    });
+                                }}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
                             />
                         </div>
 
