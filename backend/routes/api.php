@@ -29,6 +29,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Coach/Admin Routes
         Route::middleware('role:coach,admin')->group(function () {
+            Route::get('/questions', [QuestionnaireController::class, 'getQuestions']);
+            Route::post('/questions', [QuestionnaireController::class, 'updateQuestion']);
+            Route::delete('/questions', [QuestionnaireController::class, 'deleteQuestion']);
             Route::get('/users/{client}', [QuestionnaireController::class, 'getClientQuestionnaire']);
         });
     });
