@@ -13,6 +13,9 @@ interface Client {
     profile_picture?: string;
 }
 
+const API_URL = 'http://localhost:8000/api';
+const SANCTUM_COOKIE_URL = 'http://localhost:8000';
+
 export default function ClientListPage() {
     const router = useRouter();
     const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
@@ -20,24 +23,75 @@ export default function ClientListPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string>('');
 
+    const getCsrfToken = async () => {
+        try {
+            const response = await fetch(`${SANCTUM_COOKIE_URL}/sanctum/csrf-cookie`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                mode: 'cors',
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch CSRF token: ${response.status}`);
+            }
+
+            const xsrfToken = document.cookie
+                .split(';')
+                .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
+                ?.split('=')[1];
+
+            if (!xsrfToken) {
+                throw new Error('XSRF-TOKEN cookie not set');
+            }
+
+            return decodeURIComponent(xsrfToken);
+        } catch (error) {
+            console.error('Error fetching CSRF token:', error);
+            throw error;
+        }
+    };
+
     useEffect(() => {
         const fetchClients = async () => {
             try {
                 setIsLoading(true);
                 setError('');
+
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('No authentication token found');
+                }
+
+                const xsrfToken = await getCsrfToken();
+                console.log('Fetching clients with token:', token.substring(0, 10) + '...');
                 
-                console.log('Fetching clients from:', 'http://localhost:8000/api/users');
-                const response = await fetch('http://localhost:8000/api/users', {
-                    credentials: 'include',
+                const response = await fetch(`${API_URL}/users`, {
                     headers: {
+                        'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-XSRF-TOKEN': xsrfToken
+                    },
+                    credentials: 'include',
+                    mode: 'cors'
                 });
 
                 console.log('Response status:', response.status);
                 const data = await response.json();
                 console.log('Response data:', data);
+
+                if (response.status === 401) {
+                    throw new Error('Authentication failed. Please log in again.');
+                }
+
+                if (response.status === 403) {
+                    throw new Error('You do not have permission to access this page.');
+                }
 
                 if (!response.ok) {
                     throw new Error(data.message || `HTTP error! status: ${response.status}`);
@@ -47,9 +101,7 @@ export default function ClientListPage() {
                     throw new Error('No users data received from the server');
                 }
 
-                const clientUsers = data.users.filter((user: any) => user.role === 'client');
-                console.log('Filtered client users:', clientUsers);
-                setClients(clientUsers);
+                setClients(data.users);
             } catch (error) {
                 console.error('Detailed error:', error);
                 setError(error instanceof Error ? error.message : 'Failed to fetch clients');

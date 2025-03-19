@@ -461,4 +461,31 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+    // Add this new method
+    public function getUsers(Request $request)
+    {
+        try {
+            // Only allow coaches and admins to fetch users
+            if (!$request->user()->isCoach() && !$request->user()->isAdmin()) {
+                return response()->json([
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            // Get all users with role 'client'
+            $users = User::where('role', 'client')->get();
+
+            return response()->json([
+                'message' => 'Users retrieved successfully',
+                'users' => $users
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching users: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error fetching users',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
