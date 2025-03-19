@@ -38,21 +38,48 @@ export default function QuestionnairePage() {
 
     const fetchQuestions = async () => {
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/questionnaires/questions`, {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+            console.log('Fetching questions with token:', token.substring(0, 10) + '...');
+            console.log('API URL:', apiUrl);
+            
+            const response = await fetch(`${apiUrl}/questionnaires/questions`, {
                 headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 }
             });
             
-            if (!response.ok) {
-                throw new Error('Failed to fetch questions');
+            console.log('Response status:', response.status);
+            const responseData = await response.json().catch(() => ({}));
+            console.log('Response data:', responseData);
+            
+            if (response.status === 401) {
+                throw new Error('Authentication failed. Please log in again.');
             }
 
-            const data = await response.json();
-            setQuestions(data.questions);
+            if (response.status === 403) {
+                throw new Error('You do not have permission to access this page. Only coaches and admins can manage questions.');
+            }
+
+            if (!response.ok) {
+                throw new Error(responseData.message || `Failed to fetch questions (Status: ${response.status})`);
+            }
+
+            if (!Array.isArray(responseData.questions)) {
+                console.error('Unexpected response format:', responseData);
+                throw new Error('Invalid response format from server');
+            }
+
+            setQuestions(responseData.questions);
         } catch (error) {
             console.error('Error fetching questions:', error);
-            setError('Failed to load questions');
+            setError(error instanceof Error ? error.message : 'Failed to load questions');
         } finally {
             setIsLoading(false);
         }
@@ -61,17 +88,25 @@ export default function QuestionnairePage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/questionnaires/questions`, {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+            const response = await fetch(`${apiUrl}/questionnaires/questions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });
 
             if (!response.ok) {
-                throw new Error('Failed to update question');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to update question');
             }
 
             await fetchQuestions();
@@ -79,7 +114,7 @@ export default function QuestionnairePage() {
             setEditingQuestion(null);
         } catch (error) {
             console.error('Error updating question:', error);
-            setError('Failed to update question');
+            setError(error instanceof Error ? error.message : 'Failed to update question');
         }
     };
 
@@ -87,23 +122,31 @@ export default function QuestionnairePage() {
         if (!confirm('Are you sure you want to delete this question?')) return;
 
         try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/questionnaires/questions`, {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+            const response = await fetch(`${apiUrl}/questionnaires/questions`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify({ key })
             });
 
             if (!response.ok) {
-                throw new Error('Failed to delete question');
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to delete question');
             }
 
             await fetchQuestions();
         } catch (error) {
             console.error('Error deleting question:', error);
-            setError('Failed to delete question');
+            setError(error instanceof Error ? error.message : 'Failed to delete question');
         }
     };
 
