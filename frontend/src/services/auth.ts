@@ -1,10 +1,16 @@
+'use client';
+
 import { LoginCredentials, LoginResponse } from '@/types/auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 const SANCTUM_COOKIE_URL = 'http://localhost:8000';
 
+const isClient = typeof window !== 'undefined';
+
 export const authService = {
     async getCsrfToken(): Promise<void> {
+        if (!isClient) return;
+        
         try {
             console.log('Fetching CSRF token from:', `${SANCTUM_COOKIE_URL}/sanctum/csrf-cookie`);
             const response = await fetch(`${SANCTUM_COOKIE_URL}/sanctum/csrf-cookie`, {
@@ -45,6 +51,8 @@ export const authService = {
     },
 
     async login(credentials: LoginCredentials): Promise<LoginResponse> {
+        if (!isClient) throw new Error('Login can only be performed on the client side');
+        
         try {
             console.log('Starting login process...');
             
@@ -122,6 +130,8 @@ export const authService = {
     },
 
     async logout(): Promise<void> {
+        if (!isClient) throw new Error('Logout can only be performed on the client side');
+        
         try {
             console.log('Starting logout process...');
             
