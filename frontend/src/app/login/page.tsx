@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { authService } from '@/services/auth';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
-    const router = useRouter();
+    const { isAuthenticated, isLoading: isAuthLoading, login } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -17,15 +16,25 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const response = await authService.login({ email, password });
-            localStorage.setItem('token', response.token);
-            router.push('/dashboard'); // Redirect to dashboard after login
+            await login(email, password);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'An error occurred');
         } finally {
             setLoading(false);
         }
     };
+
+    if (isAuthLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-gray-600">Loading...</div>
+            </div>
+        );
+    }
+
+    if (isAuthenticated) {
+        return null;
+    }
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
