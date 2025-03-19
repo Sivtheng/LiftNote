@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::delete('/profile', [AuthController::class, 'deleteProfile']);
     Route::get('/users', [AuthController::class, 'getUsers']);
+    Route::get('/users/{user}', [AuthController::class, 'getUser']);
 
     // Questionnaire Routes
     Route::prefix('questionnaires')->group(function () {

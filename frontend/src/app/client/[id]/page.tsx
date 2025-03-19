@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -52,7 +52,10 @@ interface Questionnaire {
     answers: Record<string, string>;
 }
 
-export default function ClientDetailsPage({ params }: { params: { id: string } }) {
+const API_URL = 'http://localhost:8000/api';
+const SANCTUM_COOKIE_URL = 'http://localhost:8000';
+
+export default function ClientDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
     const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const [client, setClient] = useState<Client | null>(null);
@@ -62,19 +65,28 @@ export default function ClientDetailsPage({ params }: { params: { id: string } }
     const [error, setError] = useState<string>('');
     const [activeTab, setActiveTab] = useState<'profile' | 'questionnaire' | 'programs' | 'progress'>('profile');
 
+    const { id } = use(params);
+
     useEffect(() => {
         const fetchClientData = async () => {
             try {
                 setIsLoading(true);
                 setError('');
-                const clientId = parseInt(params.id);
+                const clientId = parseInt(id);
+
+                // Get the token
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('No authentication token found');
+                }
 
                 // Fetch client details
-                const clientResponse = await fetch(`http://localhost:8000/api/users/${clientId}`, {
+                const clientResponse = await fetch(`${API_URL}/users/${clientId}`, {
                     credentials: 'include',
                     headers: {
                         'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Authorization': `Bearer ${token}`
                     }
                 });
 
@@ -87,11 +99,12 @@ export default function ClientDetailsPage({ params }: { params: { id: string } }
                 setClient(clientData.user);
 
                 // Fetch client's questionnaire
-                const questionnaireResponse = await fetch(`http://localhost:8000/api/questionnaires/users/${clientId}`, {
+                const questionnaireResponse = await fetch(`${API_URL}/questionnaires/users/${clientId}`, {
                     credentials: 'include',
                     headers: {
                         'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Authorization': `Bearer ${token}`
                     }
                 });
 
@@ -101,11 +114,12 @@ export default function ClientDetailsPage({ params }: { params: { id: string } }
                 }
 
                 // Fetch client's programs
-                const programsResponse = await fetch('http://localhost:8000/api/programs/coach', {
+                const programsResponse = await fetch(`${API_URL}/programs/coach`, {
                     credentials: 'include',
                     headers: {
                         'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Authorization': `Bearer ${token}`
                     }
                 });
 
@@ -127,7 +141,7 @@ export default function ClientDetailsPage({ params }: { params: { id: string } }
         if (isAuthenticated) {
             fetchClientData();
         }
-    }, [isAuthenticated, params.id]);
+    }, [isAuthenticated, id]);
 
     if (isAuthLoading || isLoading) {
         return (

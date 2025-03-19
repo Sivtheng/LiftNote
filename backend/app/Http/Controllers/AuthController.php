@@ -462,7 +462,6 @@ class AuthController extends Controller
         }
     }
 
-    // Add this new method
     public function getUsers(Request $request)
     {
         try {
@@ -484,6 +483,43 @@ class AuthController extends Controller
             Log::error('Error fetching users: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error fetching users',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getUser(Request $request, User $user)
+    {
+        try {
+            // Only allow coaches and admins to fetch user details
+            if (!$request->user()->isCoach() && !$request->user()->isAdmin()) {
+                return response()->json([
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            // Only allow fetching client users
+            if ($user->role !== 'client') {
+                return response()->json([
+                    'message' => 'Can only fetch client users'
+                ], 403);
+            }
+
+            // Load relationships if needed
+            $user->load(['progressLogs', 'questionnaire']);
+
+            return response()->json([
+                'message' => 'User retrieved successfully',
+                'user' => $user
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'User not found'
+            ], 404);
+        } catch (\Exception $e) {
+            Log::error('Error fetching user: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error fetching user',
                 'error' => $e->getMessage()
             ], 500);
         }
