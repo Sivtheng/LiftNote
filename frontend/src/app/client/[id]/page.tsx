@@ -159,12 +159,20 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
             <div className="max-w-7xl mx-auto">
                 <div className="flex justify-between items-center mb-8">
                     <h1 className="text-3xl font-bold text-black">Client Details</h1>
-                    <button
-                        onClick={() => router.push('/client')}
-                        className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                    >
-                        Back to Clients
-                    </button>
+                    <div className="space-x-4">
+                        <button
+                            onClick={() => router.push('/client')}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                        >
+                            Back to Clients
+                        </button>
+                        <button
+                            onClick={() => router.push('/dashboard')}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                        >
+                            Back to Dashboard
+                        </button>
+                    </div>
                 </div>
 
                 {error && (
