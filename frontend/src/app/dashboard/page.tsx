@@ -60,8 +60,14 @@ export default function DashboardPage() {
                         </button>
                     </div>
                     <div className="bg-white rounded-lg shadow p-6">
-                        <h2 className="text-xl font-semibold mb-4 text-black">Client Responses</h2>
-                        <p className="text-black">View and manage client questionnaire responses.</p>
+                        <h2 className="text-xl font-semibold mb-4 text-black">Client Management</h2>
+                        <p className="text-black mb-4">View and manage your clients, their programs, and progress.</p>
+                        <button
+                            onClick={() => router.push('/client')}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        >
+                            Manage Clients
+                        </button>
                     </div>
                 </div>
             </div>
