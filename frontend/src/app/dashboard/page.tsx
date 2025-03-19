@@ -1,12 +1,32 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { authService } from '@/services/auth';
 
 export default function DashboardPage() {
     const router = useRouter();
     const [error, setError] = useState<string>('');
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    router.push('/login');
+                    return;
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                router.push('/login');
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        checkAuth();
+    }, [router]);
 
     const handleLogout = async () => {
         try {
@@ -18,6 +38,14 @@ export default function DashboardPage() {
             setError(error instanceof Error ? error.message : 'Failed to logout');
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-gray-600">Loading...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 p-8">
