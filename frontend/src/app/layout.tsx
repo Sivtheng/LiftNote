@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
     title: 'LiftNote',
     description: 'Rithy Application',
+    icons: {
+        icon: '/rei.jpg',
+    },
 };
 
 export default function RootLayout({
