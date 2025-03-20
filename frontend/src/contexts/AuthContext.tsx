@@ -19,20 +19,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
 
     useEffect(() => {
-        const checkAuth = () => {
+        const checkAuth = async () => {
             try {
-                const token = localStorage.getItem('token');
-                setIsAuthenticated(!!token);
+                const isValid = await authService.checkAuthStatus();
+                setIsAuthenticated(isValid);
+                if (!isValid && window.location.pathname !== '/login') {
+                    router.push('/login');
+                }
             } catch (error) {
                 console.error('Auth check failed:', error);
                 setIsAuthenticated(false);
+                if (window.location.pathname !== '/login') {
+                    router.push('/login');
+                }
             } finally {
                 setIsLoading(false);
             }
         };
 
         checkAuth();
-    }, []);
+
+        // Check auth status periodically (every 5 minutes)
+        const interval = setInterval(checkAuth, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [router]);
 
     const login = async (email: string, password: string) => {
         try {

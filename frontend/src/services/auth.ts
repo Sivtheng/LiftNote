@@ -7,6 +7,19 @@ const SANCTUM_COOKIE_URL = 'http://localhost:8000';
 
 const isClient = typeof window !== 'undefined';
 
+// Add this function to handle API responses
+const handleApiResponse = async (response: Response, router?: any) => {
+    if (response.status === 401) {
+        // Clear token and auth state on 401 (Unauthorized)
+        localStorage.removeItem('token');
+        if (router) {
+            router.push('/login');
+        }
+        throw new Error('Session expired. Please login again.');
+    }
+    return response;
+};
+
 export const authService = {
     async getCsrfToken(): Promise<void> {
         if (!isClient) return;
@@ -185,6 +198,38 @@ export const authService = {
         } catch (error) {
             console.error('Logout error:', error);
             throw error;
+        }
+    },
+
+    // Add a new method to check auth status
+    async checkAuthStatus(): Promise<boolean> {
+        if (!isClient) return false;
+        
+        const token = localStorage.getItem('token');
+        if (!token) return false;
+
+        try {
+            const response = await fetch(`${API_URL}/profile`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    return false;
+                }
+                throw new Error('Failed to verify auth status');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Auth check failed:', error);
+            return false;
         }
     }
 };
