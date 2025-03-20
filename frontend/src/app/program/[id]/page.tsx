@@ -3,42 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Program {
-    id: number;
-    title: string;
-    description: string;
-    status: 'active' | 'completed' | 'cancelled';
-    coach_id: number;
-    client_id: number;
-    coach: {
-        name: string;
-        email: string;
-    };
-    client: {
-        name: string;
-        email: string;
-    };
-    progress_logs: ProgressLog[];
-    comments: Comment[];
-}
-
-interface ProgressLog {
-    id: number;
-    title: string;
-    description: string;
-    date: string;
-    comments: Comment[];
-}
-
-interface Comment {
-    id: number;
-    content: string;
-    user: {
-        name: string;
-    };
-    created_at: string;
-}
+import { Program } from '@/types/program';
 
 const API_URL = 'http://localhost:8000/api';
 const SANCTUM_COOKIE_URL = 'http://localhost:8000';
@@ -264,8 +229,12 @@ export default function ProgramDetailsPage({ params }: { params: Promise<{ id: s
                                 <div>
                                     <h4 className="text-sm font-medium text-gray-900">Client</h4>
                                     <div className="mt-2 text-sm text-gray-500">
-                                        <p>{program.client.name}</p>
-                                        <p>{program.client.email}</p>
+                                        {program.client && (
+                                            <>
+                                                <p>{program.client.name}</p>
+                                                <p>{program.client.email}</p>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -309,7 +278,7 @@ export default function ProgramDetailsPage({ params }: { params: Promise<{ id: s
                                                     <div className="flex-1">
                                                         <p className="text-sm text-gray-900">{comment.content}</p>
                                                         <p className="mt-1 text-xs text-gray-500">
-                                                            {comment.user.name} - {new Date(comment.created_at).toLocaleDateString()}
+                                                            {comment.user.name} - {comment.created_at && new Date(comment.created_at).toLocaleDateString()}
                                                         </p>
                                                     </div>
                                                 </div>

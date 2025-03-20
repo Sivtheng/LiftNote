@@ -3,15 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Client {
-    id: number;
-    name: string;
-    email: string;
-    phone_number?: string;
-    bio?: string;
-    profile_picture?: string;
-}
+import { Client } from '@/types/client';
 
 const API_URL = 'http://localhost:8000/api';
 const SANCTUM_COOKIE_URL = 'http://localhost:8000';

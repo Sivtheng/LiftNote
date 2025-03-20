@@ -3,54 +3,9 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Client {
-    id: number;
-    name: string;
-    email: string;
-    phone_number?: string;
-    bio?: string;
-    profile_picture?: string;
-}
-
-interface Program {
-    id: number;
-    title: string;
-    description: string;
-    status: string;
-    coach_id: number;
-    client_id: number;
-    progress_logs: ProgressLog[];
-    comments: Comment[];
-}
-
-interface ProgressLog {
-    id: number;
-    title: string;
-    description: string;
-    date: string;
-    client_id: number;
-    program_id: number;
-    comments: Comment[];
-}
-
-interface Comment {
-    id: number;
-    content: string;
-    user_id: number;
-    program_id?: number;
-    progress_log_id?: number;
-    user: {
-        name: string;
-    };
-}
-
-interface Questionnaire {
-    id: number;
-    client_id: number;
-    status: string;
-    answers: Record<string, string>;
-}
+import { Client } from '@/types/client';
+import { Program, ProgressLog, Comment } from '@/types/program';
+import { Questionnaire } from '@/types/client';
 
 const API_URL = 'http://localhost:8000/api';
 

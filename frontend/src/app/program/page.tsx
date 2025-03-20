@@ -3,29 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Program {
-    id: number;
-    title: string;
-    description: string;
-    status: 'active' | 'completed' | 'cancelled';
-    coach_id: number;
-    client_id: number;
-    coach: {
-        name: string;
-    };
-    client: {
-        name: string;
-    };
-    progress_logs: ProgressLog[];
-}
-
-interface ProgressLog {
-    id: number;
-    title: string;
-    description: string;
-    date: string;
-}
+import { Program, ProgressLog } from '@/types/program';
 
 const API_URL = 'http://localhost:8000/api';
 const SANCTUM_COOKIE_URL = 'http://localhost:8000';

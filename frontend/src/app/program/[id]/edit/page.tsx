@@ -3,24 +3,8 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Program {
-    id: number;
-    title: string;
-    description: string;
-    status: 'active' | 'completed' | 'cancelled';
-    coach_id: number;
-    client_id: number;
-    client: {
-        name: string;
-    };
-}
-
-interface Client {
-    id: number;
-    name: string;
-    email: string;
-}
+import { Program } from '@/types/program';
+import { Client } from '@/types/client';
 
 const API_URL = 'http://localhost:8000/api';
 const SANCTUM_COOKIE_URL = 'http://localhost:8000';

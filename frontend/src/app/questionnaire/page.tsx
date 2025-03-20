@@ -3,19 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { Question } from '@/types/question';
 
 const API_URL = 'http://localhost:8000/api';
 const SANCTUM_COOKIE_URL = 'http://localhost:8000';
-
-interface Question {
-    id: number;
-    key: string;
-    question: string;
-    type: string;
-    options: string[] | null;
-    is_required: boolean;
-    order: number;
-}
 
 export default function QuestionnairePage() {
     const router = useRouter();
