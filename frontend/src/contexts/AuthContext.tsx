@@ -58,11 +58,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const logout = async () => {
         try {
             await authService.logout();
-            setIsAuthenticated(false);
-            router.push('/login');
         } catch (error) {
             console.error('Logout failed:', error);
-            throw error;
+        } finally {
+            // Always set authenticated to false and redirect
+            setIsAuthenticated(false);
+            router.push('/login');
         }
     };
 

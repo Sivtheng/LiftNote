@@ -146,8 +146,13 @@ export const authService = {
         if (!isClient) throw new Error('Logout can only be performed on the client side');
         
         try {
-            console.log('Starting logout process...');
-            
+            const token = localStorage.getItem('token');
+            if (!token) {
+                // If there's no token, just clear local storage
+                localStorage.removeItem('token');
+                return;
+            }
+
             // Get CSRF cookie first
             await this.getCsrfToken();
             
@@ -158,11 +163,12 @@ export const authService = {
                 ?.split('=')[1];
 
             if (!xsrfToken) {
-                throw new Error('XSRF-TOKEN not found in cookies');
+                // If no XSRF token, just clear local storage
+                localStorage.removeItem('token');
+                return;
             }
 
-            const token = localStorage.getItem('token');
-            console.log('Attempting logout...');
+            console.log('Attempting logout with token...');
 
             const response = await fetch(`${API_URL}/logout`, {
                 method: 'POST',
@@ -171,33 +177,19 @@ export const authService = {
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'X-XSRF-TOKEN': decodeURIComponent(xsrfToken),
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    'Authorization': `Bearer ${token}`
                 },
                 credentials: 'include',
                 mode: 'cors',
             });
 
             console.log('Logout Response Status:', response.status);
-            console.log('Logout Response Headers:', Object.fromEntries(response.headers.entries()));
 
-            const responseText = await response.text();
-            console.log('Raw Logout Response:', responseText);
-
-            if (!response.ok) {
-                try {
-                    const errorData = JSON.parse(responseText);
-                    throw new Error(errorData.message || 'Failed to logout');
-                } catch (e) {
-                    console.error('Error parsing logout response:', e);
-                    throw new Error('Failed to logout');
-                }
-            }
-
-            localStorage.removeItem('token');
-            console.log('Logout successful');
         } catch (error) {
             console.error('Logout error:', error);
-            throw error;
+        } finally {
+            // Always clear local storage, regardless of what happens
+            localStorage.removeItem('token');
         }
     },
 
