@@ -155,10 +155,13 @@ export default function ProgramDetailsPage({ params }: { params: Promise<{ id: s
             }
 
             const data = await response.json();
-            setProgram(prev => prev ? {
-                ...prev,
-                comments: [...prev.comments, data.comment]
-            } : null);
+            setProgram(prev => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    comments: prev.comments ? [...prev.comments, data.comment] : [data.comment]
+                };
+            });
             setNewComment('');
         } catch (error) {
             console.error('Error adding comment:', error);
@@ -299,18 +302,22 @@ export default function ProgramDetailsPage({ params }: { params: Promise<{ id: s
                         {activeTab === 'comments' && (
                             <div className="space-y-6">
                                 <div className="space-y-4">
-                                    {program.comments.map((comment) => (
-                                        <div key={comment.id} className="bg-gray-50 rounded-lg p-4">
-                                            <div className="flex items-start">
-                                                <div className="flex-1">
-                                                    <p className="text-sm text-gray-900">{comment.content}</p>
-                                                    <p className="mt-1 text-xs text-gray-500">
-                                                        {comment.user.name} - {new Date(comment.created_at).toLocaleDateString()}
-                                                    </p>
+                                    {program.comments && program.comments.length > 0 ? (
+                                        program.comments.map((comment) => (
+                                            <div key={comment.id} className="bg-gray-50 rounded-lg p-4">
+                                                <div className="flex items-start">
+                                                    <div className="flex-1">
+                                                        <p className="text-sm text-gray-900">{comment.content}</p>
+                                                        <p className="mt-1 text-xs text-gray-500">
+                                                            {comment.user.name} - {new Date(comment.created_at).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        ))
+                                    ) : (
+                                        <p className="text-gray-500 text-center">No comments yet.</p>
+                                    )}
                                 </div>
 
                                 <form onSubmit={handleAddComment} className="mt-6">
@@ -319,7 +326,7 @@ export default function ProgramDetailsPage({ params }: { params: Promise<{ id: s
                                         <textarea
                                             id="comment"
                                             rows={3}
-                                            className="shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
+                                            className="text-black shadow-sm block w-full focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm border border-gray-300 rounded-md"
                                             placeholder="Add a comment..."
                                             value={newComment}
                                             onChange={(e) => setNewComment(e.target.value)}
