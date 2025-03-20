@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -25,7 +25,8 @@ interface Client {
 const API_URL = 'http://localhost:8000/api';
 const SANCTUM_COOKIE_URL = 'http://localhost:8000';
 
-export default function EditProgramPage({ params }: { params: { id: string } }) {
+export default function EditProgramPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     const router = useRouter();
     const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const [program, setProgram] = useState<Program | null>(null);
@@ -85,7 +86,7 @@ export default function EditProgramPage({ params }: { params: { id: string } }) 
                 const xsrfToken = await getCsrfToken();
 
                 // Fetch program details
-                const programResponse = await fetch(`${API_URL}/programs/${params.id}`, {
+                const programResponse = await fetch(`${API_URL}/programs/${id}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json',
@@ -138,7 +139,7 @@ export default function EditProgramPage({ params }: { params: { id: string } }) 
         if (isAuthenticated) {
             fetchData();
         }
-    }, [isAuthenticated, params.id]);
+    }, [isAuthenticated, id]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -149,7 +150,7 @@ export default function EditProgramPage({ params }: { params: { id: string } }) 
             }
 
             const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${params.id}`, {
+            const response = await fetch(`${API_URL}/programs/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -168,7 +169,7 @@ export default function EditProgramPage({ params }: { params: { id: string } }) 
                 throw new Error(data.message || 'Failed to update program');
             }
 
-            router.push(`/program/${params.id}`);
+            router.push(`/program/${id}`);
         } catch (error) {
             console.error('Error updating program:', error);
             setError(error instanceof Error ? error.message : 'Failed to update program');
@@ -194,7 +195,7 @@ export default function EditProgramPage({ params }: { params: { id: string } }) 
                     <h1 className="text-3xl font-bold text-black">Edit Program</h1>
                     <div className="space-x-4">
                         <button
-                            onClick={() => router.push(`/program/${params.id}`)}
+                            onClick={() => router.push(`/program/${id}`)}
                             className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                         >
                             Cancel
@@ -215,7 +216,7 @@ export default function EditProgramPage({ params }: { params: { id: string } }) 
                             <select
                                 value={formData.client_id}
                                 onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                className="text-black mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                 required
                             >
                                 <option value="">Select a client</option>
@@ -233,7 +234,7 @@ export default function EditProgramPage({ params }: { params: { id: string } }) 
                                 type="text"
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                className="text-black mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                 required
                             />
                         </div>
@@ -244,7 +245,7 @@ export default function EditProgramPage({ params }: { params: { id: string } }) 
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 rows={4}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                className="text-black mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                 required
                             />
                         </div>
@@ -254,7 +255,7 @@ export default function EditProgramPage({ params }: { params: { id: string } }) 
                             <select
                                 value={formData.status}
                                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                className="text-black not-first-of-type:mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             >
                                 <option value="active">Active</option>
                                 <option value="completed">Completed</option>

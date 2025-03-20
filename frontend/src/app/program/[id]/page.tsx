@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -43,7 +43,8 @@ interface Comment {
 const API_URL = 'http://localhost:8000/api';
 const SANCTUM_COOKIE_URL = 'http://localhost:8000';
 
-export default function ProgramDetailsPage({ params }: { params: { id: string } }) {
+export default function ProgramDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params);
     const router = useRouter();
     const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const [program, setProgram] = useState<Program | null>(null);
@@ -96,7 +97,7 @@ export default function ProgramDetailsPage({ params }: { params: { id: string } 
                 }
 
                 const xsrfToken = await getCsrfToken();
-                const response = await fetch(`${API_URL}/programs/${params.id}`, {
+                const response = await fetch(`${API_URL}/programs/${id}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json',
@@ -124,7 +125,7 @@ export default function ProgramDetailsPage({ params }: { params: { id: string } 
         if (isAuthenticated) {
             fetchProgram();
         }
-    }, [isAuthenticated, params.id]);
+    }, [isAuthenticated, id]);
 
     const handleAddComment = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -135,7 +136,7 @@ export default function ProgramDetailsPage({ params }: { params: { id: string } 
             }
 
             const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${params.id}/comments`, {
+            const response = await fetch(`${API_URL}/programs/${id}/comments`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -184,7 +185,7 @@ export default function ProgramDetailsPage({ params }: { params: { id: string } 
                     <h1 className="text-3xl font-bold text-black">{program.title}</h1>
                     <div className="space-x-4">
                         <button
-                            onClick={() => router.push(`/program/${params.id}/edit`)}
+                            onClick={() => router.push(`/program/${id}/edit`)}
                             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                         >
                             Edit Program

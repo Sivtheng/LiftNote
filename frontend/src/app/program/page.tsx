@@ -71,6 +71,8 @@ export default function ProgramListPage() {
 
     useEffect(() => {
         const fetchPrograms = async () => {
+            if (!isAuthenticated) return;
+            
             try {
                 setIsLoading(true);
                 setError('');
@@ -93,32 +95,30 @@ export default function ProgramListPage() {
                     mode: 'cors'
                 });
 
-                if (response.status === 401) {
-                    throw new Error('Authentication failed. Please log in again.');
-                }
-
-                if (response.status === 403) {
-                    throw new Error('You do not have permission to access this page.');
-                }
+                const data = await response.json();
+                console.log('API Response:', data); // Debug log
 
                 if (!response.ok) {
-                    const data = await response.json();
                     throw new Error(data.message || `HTTP error! status: ${response.status}`);
                 }
 
-                const data = await response.json();
-                setPrograms(data.programs);
+                if (!data.programs) {
+                    console.warn('No programs data in response:', data);
+                    setPrograms([]);
+                    return;
+                }
+
+                setPrograms(Array.isArray(data.programs) ? data.programs : []);
             } catch (error) {
                 console.error('Error fetching programs:', error);
                 setError(error instanceof Error ? error.message : 'Failed to fetch programs');
+                setPrograms([]);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        if (isAuthenticated) {
-            fetchPrograms();
-        }
+        fetchPrograms();
     }, [isAuthenticated]);
 
     const handleDeleteProgram = async (programId: number) => {
@@ -197,7 +197,7 @@ export default function ProgramListPage() {
                     </div>
                 )}
 
-                {programs.length === 0 ? (
+                {!programs || programs.length === 0 ? (
                     <div className="bg-white shadow rounded-lg p-6 text-center">
                         <h3 className="text-lg font-medium text-gray-900 mb-2">No Programs Found</h3>
                         <p className="text-gray-500 mb-4">You haven't created any programs yet.</p>
@@ -240,7 +240,7 @@ export default function ProgramListPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-gray-900">
-                                                {program.client.name}
+                                                {program.client?.name || 'N/A'}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
@@ -254,7 +254,7 @@ export default function ProgramListPage() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-gray-900">
-                                                {program.progress_logs.length} logs
+                                                {program.progress_logs?.length || 0} logs
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
