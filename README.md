@@ -29,8 +29,8 @@ This command will build and start the following services in the background:
 
 ### Backend set up
 
-- ```composer install```
-- In the container, do ```php artisan key:generate```
+- In the container, do ```composer install```
+- ```php artisan key:generate```
 - copy the key in the output and put in the backend .env yourself if needed but it usually does it automatically.
 - ```php artisan migrate --seed```
 
