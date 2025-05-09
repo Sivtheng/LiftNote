@@ -5,11 +5,14 @@ export interface Client {
     phone_number?: string;
     bio?: string;
     profile_picture?: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface Questionnaire {
     id: number;
-    client_id: number;
-    status: string;
+    user_id: number;
     answers: Record<string, string>;
+    created_at: string;
+    updated_at: string;
 } 
