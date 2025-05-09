@@ -67,4 +67,9 @@ class User extends Authenticatable
     {
         return $this->hasOne(Questionnaire::class, 'client_id');
     }
+
+    public function createdExercises()
+    {
+        return $this->hasMany(Exercise::class, 'created_by');
+    }
 } 

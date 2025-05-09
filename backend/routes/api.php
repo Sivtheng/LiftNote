@@ -6,6 +6,8 @@ use App\Http\Controllers\QuestionnaireController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ProgressLogController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\ExerciseController;
+use App\Http\Controllers\ProgramBuilderController;
 
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -111,5 +113,26 @@ Route::middleware('auth:sanctum')->group(function () {
                 Route::delete('/', [CommentController::class, 'deleteProgressLogComment']);
             });
         });
+    });
+
+    // Exercise Routes
+    Route::prefix('exercises')->group(function () {
+        Route::get('/', [ExerciseController::class, 'index']);
+        Route::post('/', [ExerciseController::class, 'store']);
+        Route::get('/search', [ExerciseController::class, 'search']);
+    });
+
+    // Program Builder Routes
+    Route::prefix('programs/{program}/builder')->group(function () {
+        Route::post('/weeks', [ProgramBuilderController::class, 'addWeek']);
+        Route::put('/weeks/{week}', [ProgramBuilderController::class, 'updateWeek']);
+        Route::delete('/weeks/{week}', [ProgramBuilderController::class, 'deleteWeek']);
+        
+        Route::post('/weeks/{week}/days', [ProgramBuilderController::class, 'addDay']);
+        Route::put('/days/{day}', [ProgramBuilderController::class, 'updateDay']);
+        Route::delete('/days/{day}', [ProgramBuilderController::class, 'deleteDay']);
+        
+        Route::post('/days/{day}/exercises', [ProgramBuilderController::class, 'addExercise']);
+        Route::delete('/days/{day}/exercises/{exercise}', [ProgramBuilderController::class, 'removeExercise']);
     });
 });

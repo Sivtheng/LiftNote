@@ -48,4 +48,9 @@ class Program extends Model
     {
         return User::whereIn('id', [$this->coach_id, $this->client_id]);
     }
+
+    public function weeks()
+    {
+        return $this->hasMany(ProgramWeek::class)->orderBy('order');
+    }
 }
