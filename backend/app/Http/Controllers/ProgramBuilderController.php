@@ -9,6 +9,7 @@ use App\Models\Exercise;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProgramBuilderController extends Controller
 {
@@ -134,8 +135,8 @@ class ProgramBuilderController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'sets' => 'required|integer|min:1',
-                'reps' => 'nullable|integer|min:1',
-                'time_seconds' => 'nullable|integer|min:1',
+                'reps' => 'required_if:time_seconds,null|nullable|integer|min:1',
+                'time_seconds' => 'required_if:reps,null|nullable|integer|min:1',
                 'measurement_type' => 'required|in:rpe,kg',
                 'measurement_value' => 'required|numeric|min:0',
                 'description' => 'nullable|string',
@@ -157,8 +158,8 @@ class ProgramBuilderController extends Controller
             // Attach exercise to day with pivot data
             $day->exercises()->attach($exercise->id, [
                 'sets' => $validated['sets'],
-                'reps' => $validated['reps'],
-                'time_seconds' => $validated['time_seconds'],
+                'reps' => $validated['reps'] ?? null,
+                'time_seconds' => $validated['time_seconds'] ?? null,
                 'measurement_type' => $validated['measurement_type'],
                 'measurement_value' => $validated['measurement_value']
             ]);
@@ -462,8 +463,8 @@ class ProgramBuilderController extends Controller
             // Update pivot data
             $day->exercises()->updateExistingPivot($exercise->id, [
                 'sets' => $validated['sets'],
-                'reps' => $validated['reps'],
-                'time_seconds' => $validated['time_seconds'],
+                'reps' => $validated['reps'] ?? null,
+                'time_seconds' => $validated['time_seconds'] ?? null,
                 'measurement_type' => $validated['measurement_type'],
                 'measurement_value' => $validated['measurement_value']
             ]);
@@ -486,6 +487,217 @@ class ProgramBuilderController extends Controller
                 'message' => 'Error updating exercise',
                 'error' => $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function deleteExercise(Program $program, ProgramWeek $week, ProgramDay $day, Exercise $exercise)
+    {
+        try {
+            // Check authorization
+            if (!Auth::user()->isAdmin() && $program->coach_id !== Auth::id()) {
+                return response()->json([
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            // Verify week belongs to program
+            if ($week->program_id !== $program->id) {
+                return response()->json([
+                    'message' => 'Week does not belong to this program'
+                ], 400);
+            }
+
+            // Verify day belongs to week
+            if ($day->week_id !== $week->id) {
+                return response()->json([
+                    'message' => 'Day does not belong to this week'
+                ], 400);
+            }
+
+            DB::beginTransaction();
+
+            // Detach the exercise from the day
+            $day->exercises()->detach($exercise->id);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Exercise deleted successfully'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Error deleting exercise', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => 'Error deleting exercise',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function duplicateWeek(Request $request, $programId, $weekId)
+    {
+        try {
+            $program = Program::findOrFail($programId);
+            
+            // Check authorization
+            if (!Auth::user()->isAdmin() && $program->coach_id !== Auth::id()) {
+                return response()->json([
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $week = ProgramWeek::where('program_id', $programId)
+                ->where('id', $weekId)
+                ->with(['days' => function($query) {
+                    $query->with(['exercises' => function($query) {
+                        $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
+                    }]);
+                }])
+                ->firstOrFail();
+
+            DB::beginTransaction();
+
+            // Create a new week
+            $newWeek = $week->replicate();
+            $newWeek->name = $week->name . ' (Copy)';
+            $newWeek->order = ProgramWeek::where('program_id', $programId)->max('order') + 1;
+            $newWeek->save();
+
+            // Duplicate all days and their exercises
+            foreach ($week->days as $day) {
+                $newDay = $day->replicate();
+                $newDay->week_id = $newWeek->id;
+                $newDay->order = ProgramDay::where('week_id', $newWeek->id)->max('order') + 1;
+                $newDay->save();
+
+                // Duplicate all exercises for this day
+                foreach ($day->exercises as $exercise) {
+                    $pivotData = [
+                        'sets' => $exercise->pivot->sets,
+                        'reps' => $exercise->pivot->reps,
+                        'time_seconds' => $exercise->pivot->time_seconds,
+                        'measurement_type' => $exercise->pivot->measurement_type,
+                        'measurement_value' => $exercise->pivot->measurement_value
+                    ];
+                    $newDay->exercises()->attach($exercise->id, $pivotData);
+                }
+            }
+
+            DB::commit();
+
+            // Load the relationships for the response
+            $newWeek->load(['days' => function($query) {
+                $query->with(['exercises' => function($query) {
+                    $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
+                }]);
+            }]);
+
+            return response()->json([
+                'message' => 'Week duplicated successfully',
+                'week' => $newWeek
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error duplicating week: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to duplicate week',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function duplicateDay(Request $request, Program $program, ProgramWeek $week, ProgramDay $day)
+    {
+        try {
+            \Log::info('Duplicating day', [
+                'program_id' => $program->id,
+                'week_id' => $week->id,
+                'day_id' => $day->id
+            ]);
+
+            // Check if user is authorized
+            if (!auth()->user()->isAdmin() && auth()->user()->id !== $program->coach_id) {
+                \Log::warning('Unauthorized attempt to duplicate day', [
+                    'user_id' => auth()->id(),
+                    'program_id' => $program->id
+                ]);
+                return response()->json(['message' => 'Unauthorized'], 403);
+            }
+
+            // Verify week belongs to program
+            if ($week->program_id !== $program->id) {
+                return response()->json([
+                    'message' => 'Week does not belong to this program'
+                ], 400);
+            }
+
+            // Verify day belongs to week
+            if ($day->week_id !== $week->id) {
+                return response()->json([
+                    'message' => 'Day does not belong to this week'
+                ], 400);
+            }
+
+            // Start a transaction
+            DB::beginTransaction();
+
+            try {
+                // Load exercises with pivot data
+                $day->load(['exercises' => function($query) {
+                    $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
+                }]);
+
+                // Create a new day with "(Copy)" appended to the name
+                $newDay = $week->days()->create([
+                    'name' => $day->name . ' (Copy)',
+                    'order' => $week->days()->count() + 1
+                ]);
+
+                \Log::info('Created new day', ['new_day_id' => $newDay->id]);
+
+                // Duplicate all exercises with their pivot data
+                foreach ($day->exercises as $exercise) {
+                    $newDay->exercises()->attach($exercise->id, [
+                        'sets' => $exercise->pivot->sets,
+                        'reps' => $exercise->pivot->reps,
+                        'time_seconds' => $exercise->pivot->time_seconds,
+                        'measurement_type' => $exercise->pivot->measurement_type,
+                        'measurement_value' => $exercise->pivot->measurement_value
+                    ]);
+                }
+
+                \Log::info('Duplicated exercises', ['exercise_count' => count($day->exercises)]);
+
+                // Load the relationships for the response
+                $newDay->load(['exercises' => function ($query) {
+                    $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
+                }]);
+
+                DB::commit();
+
+                \Log::info('Day duplication completed successfully', ['new_day_id' => $newDay->id]);
+
+                return response()->json([
+                    'message' => 'Day duplicated successfully',
+                    'day' => $newDay
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                \Log::error('Error during day duplication transaction', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                throw $e;
+            }
+        } catch (\Exception $e) {
+            \Log::error('Error duplicating day', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'Error duplicating day: ' . $e->getMessage()], 500);
         }
     }
 } 

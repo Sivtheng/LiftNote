@@ -128,17 +128,21 @@ Route::middleware('auth:sanctum')->group(function () {
     // Program Builder Routes
     Route::prefix('programs/{program}/builder')->group(function () {
         // Week routes
+        Route::get('/weeks', [ProgramBuilderController::class, 'getWeeks']);
         Route::post('/weeks', [ProgramBuilderController::class, 'addWeek']);
         Route::put('/weeks/{week}', [ProgramBuilderController::class, 'updateWeek']);
         Route::delete('/weeks/{week}', [ProgramBuilderController::class, 'deleteWeek']);
         Route::post('/weeks/{week}/duplicate', [ProgramBuilderController::class, 'duplicateWeek']);
 
         // Day routes
+        Route::get('/weeks/{week}/days', [ProgramBuilderController::class, 'getDays']);
         Route::post('/weeks/{week}/days', [ProgramBuilderController::class, 'addDay']);
         Route::put('/weeks/{week}/days/{day}', [ProgramBuilderController::class, 'updateDay']);
         Route::delete('/weeks/{week}/days/{day}', [ProgramBuilderController::class, 'deleteDay']);
+        Route::post('/weeks/{week}/days/{day}/duplicate', [ProgramBuilderController::class, 'duplicateDay']);
 
         // Exercise routes
+        Route::get('/weeks/{week}/days/{day}/exercises', [ProgramBuilderController::class, 'getExercises']);
         Route::post('/weeks/{week}/days/{day}/exercises', [ProgramBuilderController::class, 'addExercise']);
         Route::put('/weeks/{week}/days/{day}/exercises/{exercise}', [ProgramBuilderController::class, 'updateExercise']);
         Route::delete('/weeks/{week}/days/{day}/exercises/{exercise}', [ProgramBuilderController::class, 'deleteExercise']);

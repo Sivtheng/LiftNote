@@ -12,6 +12,7 @@ interface Week {
     name: string;
     days: Day[];
     program_id: string;
+    order: number;
 }
 
 interface Day {
@@ -34,6 +35,17 @@ interface Exercise {
     day_id: string;
 }
 
+interface Program {
+    id: string;
+    title: string;
+    description?: string;
+    client?: {
+        id: string;
+        name: string;
+    };
+    weeks: Week[];
+}
+
 const API_URL = 'http://localhost:8000/api';
 const SANCTUM_COOKIE_URL = 'http://localhost:8000';
 
@@ -41,18 +53,25 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     const resolvedParams = use(params);
     const router = useRouter();
     const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-    const [program, setProgram] = useState<any>({ weeks: [] });
+    const [program, setProgram] = useState<Program>({ id: '', title: '', weeks: [] });
     const [weeks, setWeeks] = useState<Week[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string>('');
     const [showExerciseModal, setShowExerciseModal] = useState(false);
     const [selectedDay, setSelectedDay] = useState<Day | null>(null);
     const [editingWeek, setEditingWeek] = useState<string | null>(null);
+    const [editingWeekName, setEditingWeekName] = useState<string>('');
     const [editingDay, setEditingDay] = useState<{ weekId: string; dayId: string } | null>(null);
     const [showWeekDropdown, setShowWeekDropdown] = useState<string | null>(null);
     const [showDayDropdown, setShowDayDropdown] = useState<{ weekId: string; dayId: string } | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+    const [editingDayName, setEditingDayName] = useState<string>('');
+
+    // Add this useEffect for debugging
+    useEffect(() => {
+        console.log('showDayDropdown state:', showDayDropdown);
+    }, [showDayDropdown]);
 
     const getCsrfToken = async () => {
         try {
@@ -119,6 +138,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             // Initialize program data with empty weeks array
             const programData = {
                 ...data.program,
+                title: data.program.title || 'Untitled Program',
                 weeks: data.program.weeks || []
             };
 
@@ -140,10 +160,11 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                         measurement_type: exercise.pivot?.measurement_type,
                         measurement_value: exercise.pivot?.measurement_value,
                         description: exercise.description,
-                        videoLink: exercise.video_link,
+                        video_link: exercise.video_link,
                         day_id: day.id
                     }))
-                }))
+                })),
+                order: week.order
             }));
 
             console.log('Processed Program Data:', programData);
@@ -152,7 +173,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
         } catch (error) {
             console.error('Error fetching program:', error);
             setError(error instanceof Error ? error.message : 'Failed to fetch program');
-            setProgram({ weeks: [] });
+            setProgram({ id: '', title: '', weeks: [] });
             setWeeks([]);
         } finally {
             setIsLoading(false);
@@ -168,7 +189,12 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     // Close dropdowns when clicking outside
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            // Check if the click is on a dropdown button or menu
+            const target = event.target as HTMLElement;
+            const isDropdownButton = target.closest('button[aria-haspopup="true"]');
+            const isDropdownMenu = target.closest('[role="menu"]');
+            
+            if (!isDropdownButton && !isDropdownMenu) {
                 setShowWeekDropdown(null);
                 setShowDayDropdown(null);
             }
@@ -222,7 +248,8 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 id: data.week.id,
                 name: data.week.name,
                 program_id: data.week.program_id,
-                days: data.week.days || []
+                days: data.week.days || [],
+                order: data.week.order
             };
 
             setWeeks(prevWeeks => [...prevWeeks, newWeek]);
@@ -302,6 +329,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     };
 
     const handleWeekAction = async (weekId: string, action: 'duplicate' | 'delete' | 'rename') => {
+        console.log('handleWeekAction called with:', { weekId, action });
         try {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -346,9 +374,30 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                         throw new Error('Invalid response format: week data missing');
                     }
 
+                    // Process the new week data to ensure unique IDs
+                    const newWeek = {
+                        ...data.week,
+                        days: data.week.days.map((day: any) => ({
+                            ...day,
+                            exercises: day.exercises.map((exercise: any) => ({
+                                ...exercise,
+                                id: exercise.id,
+                                name: exercise.name,
+                                sets: exercise.pivot.sets,
+                                reps: exercise.pivot.reps,
+                                time_seconds: exercise.pivot.time_seconds,
+                                measurement_type: exercise.pivot.measurement_type,
+                                measurement_value: exercise.pivot.measurement_value,
+                                description: exercise.description,
+                                video_link: exercise.video_link,
+                                day_id: day.id
+                            }))
+                        }))
+                    };
+
                     setWeeks(prevWeeks => {
                         const updatedWeeks = [...prevWeeks];
-                        updatedWeeks.splice(weekIndex + 1, 0, data.week);
+                        updatedWeeks.splice(weekIndex + 1, 0, newWeek);
                         return updatedWeeks;
                     });
                     break;
@@ -388,9 +437,15 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                     });
                     break;
                 }
-                case 'rename':
+                case 'rename': {
+                    console.log('Rename case triggered');
+                    const week = weeks[weekIndex];
+                    console.log('Current week:', week);
+                    setEditingWeekName(week.name);
                     setEditingWeek(weekId);
+                    console.log('State updated:', { editingWeek: weekId, editingWeekName: week.name });
                     break;
+                }
             }
             setShowWeekDropdown(null);
         } catch (error) {
@@ -400,9 +455,19 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     };
 
     const handleWeekRename = async (weekId: string, newName: string) => {
+        console.log('handleWeekRename called with:', { weekId, newName });
         try {
             const token = localStorage.getItem('token');
-            if (!token) return;
+            if (!token) {
+                setError('Authentication token not found');
+                return;
+            }
+
+            const weekIndex = weeks.findIndex(w => w.id === weekId);
+            if (weekIndex === -1) {
+                setError('Week not found');
+                return;
+            }
 
             const xsrfToken = await getCsrfToken();
             const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}`, {
@@ -416,40 +481,140 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 },
                 credentials: 'include',
                 mode: 'cors',
-                body: JSON.stringify({ name: newName })
+                body: JSON.stringify({ 
+                    name: newName,
+                    order: weeks[weekIndex].order 
+                })
             });
 
+            const data = await response.json();
+            console.log('Rename response:', data);
+
             if (!response.ok) {
-                throw new Error('Failed to rename week');
+                console.error('Failed to rename week:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: data
+                });
+                throw new Error(data.message || `Failed to rename week: ${response.status} ${response.statusText}`);
             }
 
-            const data = await response.json();
-            const weekIndex = weeks.findIndex(w => w.id === weekId);
-            if (weekIndex === -1) return;
+            if (!data.week) {
+                throw new Error('Invalid response format: week data missing');
+            }
 
-            const updatedWeeks = [...weeks];
-            updatedWeeks[weekIndex].name = data.week.name;
-            setWeeks(updatedWeeks);
+            // Update the state with the new week name
+            setWeeks(prevWeeks => {
+                const updatedWeeks = [...prevWeeks];
+                updatedWeeks[weekIndex] = {
+                    ...updatedWeeks[weekIndex],
+                    name: data.week.name
+                };
+                console.log('Updated weeks state:', updatedWeeks);
+                return updatedWeeks;
+            });
             setEditingWeek(null);
+            setEditingWeekName('');
         } catch (error) {
             console.error('Error renaming week:', error);
             setError(error instanceof Error ? error.message : 'Failed to rename week');
         }
     };
 
-    const handleDayAction = async (weekId: string, dayId: string, action: 'delete' | 'rename') => {
+    const handleDayAction = async (weekId: string, dayId: string, action: 'delete' | 'rename' | 'duplicate') => {
+        console.log('handleDayAction called with:', { weekId, dayId, action });
         try {
             const token = localStorage.getItem('token');
-            if (!token) return;
+            if (!token) {
+                setError('Authentication token not found');
+                return;
+            }
 
             const weekIndex = weeks.findIndex(w => w.id === weekId);
-            if (weekIndex === -1) return;
+            if (weekIndex === -1) {
+                setError('Week not found');
+                return;
+            }
 
             const dayIndex = weeks[weekIndex].days.findIndex(d => d.id === dayId);
-            if (dayIndex === -1) return;
+            if (dayIndex === -1) {
+                setError('Day not found');
+                return;
+            }
 
             const xsrfToken = await getCsrfToken();
             switch (action) {
+                case 'duplicate': {
+                    console.log('Making duplicate day request...', {
+                        url: `${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/duplicate`,
+                        weekId,
+                        dayId
+                    });
+                    const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/duplicate`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-XSRF-TOKEN': xsrfToken
+                        },
+                        credentials: 'include',
+                        mode: 'cors'
+                    });
+
+                    const data = await response.json();
+                    console.log('Duplicate day response:', data);
+
+                    if (!response.ok) {
+                        console.error('Failed to duplicate day:', {
+                            status: response.status,
+                            statusText: response.statusText,
+                            error: data
+                        });
+                        throw new Error(data.message || `Failed to duplicate day: ${response.status} ${response.statusText}`);
+                    }
+
+                    if (!data.day) {
+                        throw new Error('Invalid response format: day data missing');
+                    }
+
+                    // Process the new day data to ensure all exercise data is properly handled
+                    const newDay = {
+                        ...data.day,
+                        exercises: data.day.exercises.map((exercise: any) => ({
+                            ...exercise,
+                            id: exercise.id,
+                            name: exercise.name,
+                            sets: exercise.pivot.sets,
+                            reps: exercise.pivot.reps,
+                            time_seconds: exercise.pivot.time_seconds,
+                            measurement_type: exercise.pivot.measurement_type,
+                            measurement_value: exercise.pivot.measurement_value,
+                            description: exercise.description,
+                            video_link: exercise.video_link,
+                            day_id: data.day.id
+                        }))
+                    };
+
+                    console.log('Processed new day:', newDay);
+
+                    // Update the state with the new day
+                    setWeeks(prevWeeks => {
+                        const updatedWeeks = [...prevWeeks];
+                        updatedWeeks[weekIndex] = {
+                            ...updatedWeeks[weekIndex],
+                            days: [
+                                ...updatedWeeks[weekIndex].days.slice(0, dayIndex + 1),
+                                newDay,
+                                ...updatedWeeks[weekIndex].days.slice(dayIndex + 1)
+                            ]
+                        };
+                        console.log('Updated weeks state:', updatedWeeks);
+                        return updatedWeeks;
+                    });
+                    break;
+                }
                 case 'delete': {
                     const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}`, {
                         method: 'DELETE',
@@ -463,31 +628,38 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                         mode: 'cors'
                     });
 
+                    const data = await response.json();
+
                     if (!response.ok) {
-                        const errorData = await response.json().catch(() => null);
                         console.error('Failed to delete day:', {
                             status: response.status,
                             statusText: response.statusText,
-                            error: errorData
+                            error: data
                         });
-                        throw new Error(errorData?.message || `Failed to delete day: ${response.status} ${response.statusText}`);
+                        throw new Error(data.message || `Failed to delete day: ${response.status} ${response.statusText}`);
                     }
 
-                    const data = await response.json();
                     if (data.message !== 'Day deleted successfully') {
                         throw new Error('Unexpected response from server');
                     }
 
+                    // Update the state to remove the deleted day
                     setWeeks(prevWeeks => {
                         const updatedWeeks = [...prevWeeks];
-                        updatedWeeks[weekIndex].days.splice(dayIndex, 1);
+                        updatedWeeks[weekIndex] = {
+                            ...updatedWeeks[weekIndex],
+                            days: updatedWeeks[weekIndex].days.filter(d => d.id !== dayId)
+                        };
                         return updatedWeeks;
                     });
                     break;
                 }
-                case 'rename':
+                case 'rename': {
+                    const day = weeks[weekIndex].days[dayIndex];
+                    setEditingDayName(day.name);
                     setEditingDay({ weekId, dayId });
                     break;
+                }
             }
             setShowDayDropdown(null);
         } catch (error) {
@@ -501,8 +673,14 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             const token = localStorage.getItem('token');
             if (!token) return;
 
+            const weekIndex = weeks.findIndex(w => w.id === weekId);
+            if (weekIndex === -1) return;
+
+            const dayIndex = weeks[weekIndex].days.findIndex(d => d.id === dayId);
+            if (dayIndex === -1) return;
+
             const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/days/${dayId}`, {
+            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -513,7 +691,10 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 },
                 credentials: 'include',
                 mode: 'cors',
-                body: JSON.stringify({ name: newName })
+                body: JSON.stringify({ 
+                    name: newName,
+                    order: dayIndex + 1
+                })
             });
 
             if (!response.ok) {
@@ -521,12 +702,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             }
 
             const data = await response.json();
-            const weekIndex = weeks.findIndex(w => w.id === weekId);
-            if (weekIndex === -1) return;
-
-            const dayIndex = weeks[weekIndex].days.findIndex(d => d.id === dayId);
-            if (dayIndex === -1) return;
-
             const updatedWeeks = [...weeks];
             updatedWeeks[weekIndex].days[dayIndex].name = data.day.name;
             setWeeks(updatedWeeks);
@@ -587,30 +762,35 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             const newExercise = {
                 id: data.exercise.id,
                 name: data.exercise.name,
-                sets: data.exercise.pivot?.sets,
-                reps: data.exercise.pivot?.reps,
-                time_seconds: data.exercise.pivot?.time_seconds,
-                measurement_type: data.exercise.pivot?.measurement_type,
-                measurement_value: data.exercise.pivot?.measurement_value,
-                description: data.exercise.description,
-                video_link: data.exercise.video_link,
+                sets: exercise.sets,
+                reps: exercise.reps,
+                time_seconds: exercise.time_seconds,
+                measurement_type: exercise.measurement_type,
+                measurement_value: exercise.measurement_value,
+                description: exercise.description,
+                video_link: exercise.video_link,
                 day_id: selectedDay.id
             };
 
+            // Update the state with the new exercise
             setWeeks(prevWeeks => {
-                const updatedWeeks = [...prevWeeks];
-                const weekIndex = updatedWeeks.findIndex(w => w.days.some(d => d.id === selectedDay.id));
-                if (weekIndex === -1) return prevWeeks;
-
-                const dayIndex = updatedWeeks[weekIndex].days.findIndex(d => d.id === selectedDay.id);
-                if (dayIndex === -1) return prevWeeks;
-
-                updatedWeeks[weekIndex].days[dayIndex] = {
-                    ...updatedWeeks[weekIndex].days[dayIndex],
-                    exercises: [...updatedWeeks[weekIndex].days[dayIndex].exercises, newExercise]
-                };
-
-                return updatedWeeks;
+                return prevWeeks.map(week => {
+                    if (week.id === selectedDay.week_id) {
+                        return {
+                            ...week,
+                            days: week.days.map(day => {
+                                if (day.id === selectedDay.id) {
+                                    return {
+                                        ...day,
+                                        exercises: [...day.exercises, newExercise]
+                                    };
+                                }
+                                return day;
+                            })
+                        };
+                    }
+                    return week;
+                });
             });
 
             setShowExerciseModal(false);
@@ -669,27 +849,33 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
 
             // Update the exercise in the state
             setWeeks(prevWeeks => {
-                const updatedWeeks = [...prevWeeks];
-                const weekIndex = updatedWeeks.findIndex(w => w.days.some(d => d.id === selectedDay.id));
-                if (weekIndex === -1) return prevWeeks;
-
-                const dayIndex = updatedWeeks[weekIndex].days.findIndex(d => d.id === selectedDay.id);
-                if (dayIndex === -1) return prevWeeks;
-
-                const exerciseIndex = updatedWeeks[weekIndex].days[dayIndex].exercises.findIndex(e => e.id === exercise.id);
-                if (exerciseIndex === -1) return prevWeeks;
-
-                updatedWeeks[weekIndex].days[dayIndex].exercises[exerciseIndex] = {
-                    ...data.exercise,
-                    sets: data.exercise.pivot?.sets,
-                    reps: data.exercise.pivot?.reps,
-                    time_seconds: data.exercise.pivot?.time_seconds,
-                    measurement_type: data.exercise.pivot?.measurement_type,
-                    measurement_value: data.exercise.pivot?.measurement_value,
-                    day_id: selectedDay.id
-                };
-
-                return updatedWeeks;
+                return prevWeeks.map(week => {
+                    if (week.id === selectedDay.week_id) {
+                        return {
+                            ...week,
+                            days: week.days.map(day => {
+                                if (day.id === selectedDay.id) {
+                                    return {
+                                        ...day,
+                                        exercises: day.exercises.map(ex => {
+                                            if (ex.id === exercise.id) {
+                                                return {
+                                                    ...exercise,
+                                                    id: data.exercise.id,
+                                                    name: data.exercise.name,
+                                                    day_id: selectedDay.id
+                                                };
+                                            }
+                                            return ex;
+                                        })
+                                    };
+                                }
+                                return day;
+                            })
+                        };
+                    }
+                    return week;
+                });
             });
 
             setShowExerciseModal(false);
@@ -791,26 +977,39 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 throw new Error('Invalid response format: exercise data missing');
             }
 
-            // Add the duplicated exercise to the state
+            // Process the new exercise data
+            const newExercise = {
+                id: data.exercise.id,
+                name: data.exercise.name,
+                sets: exercise.sets,
+                reps: exercise.reps,
+                time_seconds: exercise.time_seconds,
+                measurement_type: exercise.measurement_type,
+                measurement_value: exercise.measurement_value,
+                description: exercise.description,
+                video_link: exercise.video_link,
+                day_id: dayId
+            };
+
+            // Update the state with the new exercise
             setWeeks(prevWeeks => {
-                const updatedWeeks = [...prevWeeks];
-                const weekIndex = updatedWeeks.findIndex(w => w.id === weekId);
-                if (weekIndex === -1) return prevWeeks;
-
-                const dayIndex = updatedWeeks[weekIndex].days.findIndex(d => d.id === dayId);
-                if (dayIndex === -1) return prevWeeks;
-
-                updatedWeeks[weekIndex].days[dayIndex].exercises.push({
-                    ...data.exercise,
-                    sets: data.exercise.pivot?.sets,
-                    reps: data.exercise.pivot?.reps,
-                    time_seconds: data.exercise.pivot?.time_seconds,
-                    measurement_type: data.exercise.pivot?.measurement_type,
-                    measurement_value: data.exercise.pivot?.measurement_value,
-                    day_id: dayId
+                return prevWeeks.map(week => {
+                    if (week.id === weekId) {
+                        return {
+                            ...week,
+                            days: week.days.map(day => {
+                                if (day.id === dayId) {
+                                    return {
+                                        ...day,
+                                        exercises: [...day.exercises, newExercise]
+                                    };
+                                }
+                                return day;
+                            })
+                        };
+                    }
+                    return week;
                 });
-
-                return updatedWeeks;
             });
         } catch (error) {
             console.error('Error duplicating exercise:', error);
@@ -857,10 +1056,17 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             <Navbar />
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {/* Header */}
-                <div className="flex justify-between items-center mb-12">
-                    <div>
-                        <h1 className="text-4xl font-bold text-gray-900">Program Builder</h1>
-                        <p className="mt-3 text-lg text-gray-600">Program Information</p>
+                <div className="flex justify-between items-start mb-12">
+                    <div className="space-y-4">
+                        <h1 className="text-4xl font-bold text-gray-900">{program.title || 'Untitled Program'}</h1>
+                        <div className="space-y-2">
+                            <p className="text-lg text-gray-600">
+                                <span className="font-semibold">Client:</span> {program.client?.name || 'No client assigned'}
+                            </p>
+                            <p className="text-lg text-gray-600">
+                                <span className="font-semibold">Description:</span> {program.description || 'No description provided'}
+                            </p>
+                        </div>
                     </div>
                     <button
                         onClick={() => router.push('/program')}
@@ -871,19 +1077,29 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 </div>
 
                 {/* Weeks Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                     {Array.isArray(weeks) && weeks.map((week) => (
                         <div key={week.id} className="bg-white rounded-xl shadow-lg p-6">
                             <div className="flex justify-between items-center mb-4">
                                 {editingWeek === week.id ? (
                                     <input
                                         type="text"
-                                        value={week.name}
-                                        onChange={(e) => handleWeekRename(week.id, e.target.value)}
-                                        onBlur={() => setEditingWeek(null)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
+                                        value={editingWeekName}
+                                        onChange={(e) => setEditingWeekName(e.target.value)}
+                                        onBlur={() => {
+                                            if (editingWeekName.trim()) {
+                                                handleWeekRename(week.id, editingWeekName);
+                                            } else {
                                                 setEditingWeek(null);
+                                                setEditingWeekName('');
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && editingWeekName.trim()) {
+                                                handleWeekRename(week.id, editingWeekName);
+                                            } else if (e.key === 'Escape') {
+                                                setEditingWeek(null);
+                                                setEditingWeekName('');
                                             }
                                         }}
                                         className="text-xl font-semibold text-gray-900 px-2 py-1 border rounded"
@@ -896,6 +1112,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                     <button
                                         onClick={() => setShowWeekDropdown(showWeekDropdown === week.id ? null : week.id)}
                                         className="p-2 hover:bg-gray-100 rounded-lg"
+                                        aria-haspopup="true"
                                     >
                                         <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -929,17 +1146,27 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                             {/* Days */}
                             <div className="space-y-4">
                                 {week.days.map((day) => (
-                                    <div key={day.id} className="bg-gray-50 rounded-lg p-4">
+                                    <div key={day.id} className="bg-gray-50 rounded-lg p-4 w-full">
                                         <div className="flex justify-between items-center mb-4">
                                             {editingDay?.weekId === week.id && editingDay?.dayId === day.id ? (
                                                 <input
                                                     type="text"
-                                                    value={day.name}
-                                                    onChange={(e) => handleDayRename(week.id, day.id, e.target.value)}
-                                                    onBlur={() => setEditingDay(null)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
+                                                    value={editingDayName}
+                                                    onChange={(e) => setEditingDayName(e.target.value)}
+                                                    onBlur={() => {
+                                                        if (editingDayName.trim()) {
+                                                            handleDayRename(week.id, day.id, editingDayName);
+                                                        } else {
                                                             setEditingDay(null);
+                                                            setEditingDayName('');
+                                                        }
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' && editingDayName.trim()) {
+                                                            handleDayRename(week.id, day.id, editingDayName);
+                                                        } else if (e.key === 'Escape') {
+                                                            setEditingDay(null);
+                                                            setEditingDayName('');
                                                         }
                                                     }}
                                                     className="text-lg font-medium text-gray-900 px-2 py-1 border rounded"
@@ -950,28 +1177,68 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                             )}
                                             <div className="relative">
                                                 <button
-                                                    onClick={() => setShowDayDropdown(
-                                                        showDayDropdown?.weekId === week.id && showDayDropdown?.dayId === day.id
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        console.log('Dropdown toggle clicked', { weekId: week.id, dayId: day.id });
+                                                        const newState = showDayDropdown?.weekId === week.id && showDayDropdown?.dayId === day.id
                                                             ? null
-                                                            : { weekId: week.id, dayId: day.id }
-                                                    )}
+                                                            : { weekId: week.id, dayId: day.id };
+                                                        console.log('Setting dropdown state to:', newState);
+                                                        setShowDayDropdown(newState);
+                                                    }}
                                                     className="p-2 hover:bg-gray-200 rounded-lg"
+                                                    aria-haspopup="true"
                                                 >
                                                     <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                                                     </svg>
                                                 </button>
                                                 {showDayDropdown?.weekId === week.id && showDayDropdown?.dayId === day.id && (
-                                                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10">
+                                                    <div 
+                                                        className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-50 border border-gray-200"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            console.log('Dropdown menu clicked', { weekId: week.id, dayId: day.id });
+                                                        }}
+                                                        role="menu"
+                                                    >
                                                         <button
-                                                            onClick={() => handleDayAction(week.id, day.id, 'rename')}
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                console.log('Rename button clicked', { weekId: week.id, dayId: day.id });
+                                                                handleDayAction(week.id, day.id, 'rename');
+                                                            }}
                                                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                            role="menuitem"
                                                         >
                                                             Rename
                                                         </button>
                                                         <button
-                                                            onClick={() => handleDayAction(week.id, day.id, 'delete')}
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                console.log('Duplicate button clicked', { weekId: week.id, dayId: day.id });
+                                                                handleDayAction(week.id, day.id, 'duplicate');
+                                                            }}
+                                                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                            role="menuitem"
+                                                        >
+                                                            Duplicate
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                console.log('Delete button clicked', { weekId: week.id, dayId: day.id });
+                                                                handleDayAction(week.id, day.id, 'delete');
+                                                            }}
                                                             className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                                                            role="menuitem"
                                                         >
                                                             Delete
                                                         </button>
@@ -994,24 +1261,27 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div className="space-y-4">
-                                                <div className="overflow-x-auto">
-                                                    <table className="min-w-full divide-y divide-gray-200">
+                                            <div className="space-y-4 w-full">
+                                                <div className="w-full">
+                                                    <table className="w-full divide-y divide-gray-200">
                                                         <thead className="bg-gray-50">
                                                             <tr>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                <th scope="col" className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
                                                                     Exercise
                                                                 </th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                <th scope="col" className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                                                                     Sets
                                                                 </th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                <th scope="col" className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                                                                     Rep/Time
                                                                 </th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                <th scope="col" className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                                                                     RPE/KG
                                                                 </th>
-                                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                <th scope="col" className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                                                                    Video
+                                                                </th>
+                                                                <th scope="col" className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                                                                     Actions
                                                                 </th>
                                                             </tr>
@@ -1019,21 +1289,21 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                         <tbody className="bg-white divide-y divide-gray-200">
                                                             {day.exercises.map((exercise) => (
                                                                 <tr key={exercise.id}>
-                                                                    <td className="px-6 py-4 whitespace-nowrap">
-                                                                        <div className="text-sm font-medium text-gray-900">{exercise.name}</div>
+                                                                    <td className="px-2 py-2">
+                                                                        <div className="text-sm font-medium text-gray-900 break-words whitespace-normal">{exercise.name}</div>
                                                                         {exercise.description && (
-                                                                            <div className="text-sm text-gray-500">{exercise.description}</div>
+                                                                            <div className="text-sm text-gray-500 break-words whitespace-normal">{exercise.description}</div>
                                                                         )}
                                                                     </td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <td className="px-2 py-2">
                                                                         <div className="text-sm text-gray-900">{exercise.sets}</div>
                                                                     </td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <td className="px-2 py-2">
                                                                         <div className="text-sm text-gray-900">
                                                                             {exercise.reps ? `${exercise.reps} reps` : `${exercise.time_seconds}s`}
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                                    <td className="px-2 py-2">
                                                                         <div className="text-sm text-gray-900">
                                                                             {exercise.measurement_type === 'kg' 
                                                                                 ? `${exercise.measurement_value} kg`
@@ -1041,8 +1311,20 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                                             }
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                                        <div className="flex space-x-2">
+                                                                    <td className="px-2 py-2">
+                                                                        {exercise.video_link && (
+                                                                            <a 
+                                                                                href={exercise.video_link}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="text-indigo-600 hover:text-indigo-900 text-sm truncate block max-w-[100px]"
+                                                                            >
+                                                                                View Video
+                                                                            </a>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-2 py-2 text-right text-sm font-medium">
+                                                                        <div className="flex space-x-1">
                                                                             <button
                                                                                 onClick={() => {
                                                                                     setSelectedDay(day);

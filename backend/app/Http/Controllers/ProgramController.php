@@ -213,6 +213,7 @@ class ProgramController extends Controller
         try {
             // Load all relationships
             $program->load([
+                'client',
                 'weeks' => function($query) {
                     $query->orderBy('order');
                 },

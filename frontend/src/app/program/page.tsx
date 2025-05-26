@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Program, ProgressLog } from '@/types/program';
+import { Program, ProgressLog, ProgramWeek, Comment } from '@/types/program';
 import Navbar from '../components/Navbar';
 
 const API_URL = 'http://localhost:8000/api';
@@ -137,6 +137,49 @@ export default function ProgramListPage() {
         }
     };
 
+    const handleStatusChange = async (programId: number, newStatus: 'active' | 'completed' | 'cancelled') => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            const xsrfToken = await getCsrfToken();
+            const response = await fetch(`${API_URL}/programs/${programId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': xsrfToken
+                },
+                credentials: 'include',
+                mode: 'cors',
+                body: JSON.stringify({
+                    status: newStatus,
+                    title: programs.find(p => p.id === programId)?.title || '',
+                    description: programs.find(p => p.id === programId)?.description || ''
+                })
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Failed to update program status');
+            }
+
+            // Update the program status in the local state
+            setPrograms(programs.map(program => 
+                program.id === programId 
+                    ? { ...program, status: newStatus }
+                    : program
+            ));
+        } catch (error) {
+            console.error('Error updating program status:', error);
+            setError(error instanceof Error ? error.message : 'Failed to update program status');
+        }
+    };
+
     if (isAuthLoading || isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -207,42 +250,48 @@ export default function ProgramListPage() {
 
                     {/* Program Cards */}
                     {programs.map((program) => (
-                        <div key={program.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200">
-                            <div className="h-48 bg-gray-100 flex items-center justify-center">
+                        <div 
+                            key={program.id} 
+                            className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200"
+                        >
+                            <div 
+                                onClick={() => router.push(`/program/${program.id}`)}
+                                className="h-48 bg-gray-100 flex items-center justify-center cursor-pointer"
+                            >
                                 {getStatusIcon(program.status)}
                             </div>
                             <div className="p-6">
                                 <div className="flex justify-between items-start">
                                     <h3 className="text-lg font-medium text-gray-900">{program.title}</h3>
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                        program.status === 'active' ? 'bg-green-100 text-green-800' :
-                                        program.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                        'bg-red-100 text-red-800'
-                                    }`}>
-                                        {program.status}
-                                    </span>
+                                    <div className="relative">
+                                        <select
+                                            value={program.status}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                handleStatusChange(program.id, e.target.value as 'active' | 'completed' | 'cancelled');
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className={`text-sm font-medium rounded-full px-2.5 py-0.5 cursor-pointer ${
+                                                program.status === 'active' ? 'bg-green-100 text-green-800' :
+                                                program.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                                'bg-red-100 text-red-800'
+                                            }`}
+                                        >
+                                            <option value="active">Active</option>
+                                            <option value="completed">Completed</option>
+                                            <option value="cancelled">Cancelled</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <p className="mt-2 text-sm text-gray-500">
                                     Client: {program.client?.name || 'N/A'}
                                 </p>
-                                <p className="mt-1 text-sm text-gray-500">
-                                    Progress: {program.progress_logs?.length || 0} logs
-                                </p>
-                                <div className="mt-4 flex justify-end space-x-3">
+                                <div className="mt-4 flex justify-end">
                                     <button
-                                        onClick={() => router.push(`/program/${program.id}`)}
-                                        className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                                    >
-                                        View
-                                    </button>
-                                    <button
-                                        onClick={() => router.push(`/program/${program.id}/edit`)}
-                                        className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteProgram(program.id)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteProgram(program.id);
+                                        }}
                                         className="text-red-600 hover:text-red-900 text-sm font-medium"
                                     >
                                         Delete
