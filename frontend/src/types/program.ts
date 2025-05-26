@@ -13,8 +13,49 @@ export interface Program {
         name: string;
         email?: string;
     };
+    weeks: ProgramWeek[];
     progress_logs: ProgressLog[];
     comments: Comment[];
+}
+
+export interface ProgramWeek {
+    id: number;
+    program_id: number;
+    name: string;
+    order: number;
+    days: ProgramDay[];
+}
+
+export interface ProgramDay {
+    id: number;
+    week_id: number;
+    name: string;
+    order: number;
+    exercises: ProgramDayExercise[];
+}
+
+export interface ProgramDayExercise {
+    id: number;
+    program_day_id: number;
+    exercise_id: number;
+    sets: number;
+    reps?: number;
+    time_seconds?: number;
+    measurement_type: 'rpe' | 'kg';
+    measurement_value: number;
+    exercise: Exercise;
+}
+
+export interface Exercise {
+    id: number;
+    name: string;
+    target_type: 'reps' | 'time';
+    description?: string;
+    video_link?: string;
+    created_by: number;
+    creator?: {
+        name: string;
+    };
 }
 
 export interface ProgressLog {

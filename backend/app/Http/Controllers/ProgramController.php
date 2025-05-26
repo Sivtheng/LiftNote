@@ -211,46 +211,27 @@ class ProgramController extends Controller
     public function show(Program $program)
     {
         try {
-            if (request()->expectsJson()) {
-                // API request
-                $user = Auth::user();
-                if (!$user->isAdmin() && 
-                    $program->coach_id !== $user->id && 
-                    $program->client_id !== $user->id) {
-                    return response()->json([
-                        'message' => 'Unauthorized'
-                    ], 403);
+            // Load all relationships
+            $program->load([
+                'weeks' => function($query) {
+                    $query->orderBy('order');
+                },
+                'weeks.days' => function($query) {
+                    $query->orderBy('order');
+                },
+                'weeks.days.exercises' => function($query) {
+                    $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
                 }
+            ]);
 
-                return response()->json([
-                    'program' => $program->load(['coach', 'client', 'progressLogs'])
-                ]);
-            }
-
-            // Web request
-            $program->load(['coach', 'client', 'progressLogs']);
-            return view('admin.programs.show', compact('program'));
-        } catch (ModelNotFoundException $e) {
-            if (request()->expectsJson()) {
-                return response()->json([
-                    'message' => 'Program not found'
-                ], 404);
-            }
-            return $this->respondTo([
-                'message' => 'Program not found',
-                'error' => $e->getMessage()
+            return response()->json([
+                'program' => $program
             ]);
         } catch (\Exception $e) {
-            if (request()->expectsJson()) {
-                return response()->json([
-                    'message' => 'Error fetching program',
-                    'error' => $e->getMessage()
-                ], 500);
-            }
-            return $this->respondTo([
+            return response()->json([
                 'message' => 'Error fetching program',
                 'error' => $e->getMessage()
-            ]);
+            ], 500);
         }
     }
 

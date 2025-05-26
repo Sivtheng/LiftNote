@@ -2,25 +2,35 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class ProgramDay extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'week_id',
         'name',
-        'order'
+        'order',
+        'week_id'
     ];
 
-    public function week()
+    public function week(): BelongsTo
     {
-        return $this->belongsTo(ProgramWeek::class, 'week_id');
+        return $this->belongsTo(ProgramWeek::class);
     }
 
-    public function exercises()
+    public function exercises(): BelongsToMany
     {
         return $this->belongsToMany(Exercise::class, 'program_day_exercises')
-            ->withPivot('target_types', 'values')
-            ->withTimestamps();
+            ->withPivot([
+                'sets',
+                'reps',
+                'time_seconds',
+                'measurement_type',
+                'measurement_value'
+            ]);
     }
-} 
+}

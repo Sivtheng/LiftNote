@@ -25,7 +25,7 @@ class Program extends Model
 
     public function coach(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'coach_id')->where('role', 'coach');
+        return $this->belongsTo(User::class, 'coach_id');
     }
 
     public function client(): BelongsTo
@@ -49,7 +49,7 @@ class Program extends Model
         return User::whereIn('id', [$this->coach_id, $this->client_id]);
     }
 
-    public function weeks()
+    public function weeks(): HasMany
     {
         return $this->hasMany(ProgramWeek::class)->orderBy('order');
     }

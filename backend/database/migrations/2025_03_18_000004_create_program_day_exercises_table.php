@@ -12,8 +12,11 @@ return new class extends Migration
             $table->id();
             $table->foreignId('program_day_id')->constrained()->onDelete('cascade');
             $table->foreignId('exercise_id')->constrained()->onDelete('cascade');
-            $table->json('target_types');
-            $table->json('values');
+            $table->integer('sets');
+            $table->integer('reps')->nullable();
+            $table->integer('time_seconds')->nullable();
+            $table->enum('measurement_type', ['rpe', 'kg']);
+            $table->decimal('measurement_value', 5, 2);
             $table->timestamps();
         });
     }

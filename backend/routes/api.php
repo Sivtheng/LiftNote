@@ -120,19 +120,29 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [ExerciseController::class, 'index']);
         Route::post('/', [ExerciseController::class, 'store']);
         Route::get('/search', [ExerciseController::class, 'search']);
+        Route::get('/{exercise}', [ExerciseController::class, 'show']);
+        Route::put('/{exercise}', [ExerciseController::class, 'update']);
+        Route::delete('/{exercise}', [ExerciseController::class, 'destroy']);
     });
 
     // Program Builder Routes
     Route::prefix('programs/{program}/builder')->group(function () {
+        // Week routes
         Route::post('/weeks', [ProgramBuilderController::class, 'addWeek']);
         Route::put('/weeks/{week}', [ProgramBuilderController::class, 'updateWeek']);
         Route::delete('/weeks/{week}', [ProgramBuilderController::class, 'deleteWeek']);
-        
+        Route::post('/weeks/{week}/duplicate', [ProgramBuilderController::class, 'duplicateWeek']);
+
+        // Day routes
         Route::post('/weeks/{week}/days', [ProgramBuilderController::class, 'addDay']);
-        Route::put('/days/{day}', [ProgramBuilderController::class, 'updateDay']);
-        Route::delete('/days/{day}', [ProgramBuilderController::class, 'deleteDay']);
-        
-        Route::post('/days/{day}/exercises', [ProgramBuilderController::class, 'addExercise']);
-        Route::delete('/days/{day}/exercises/{exercise}', [ProgramBuilderController::class, 'removeExercise']);
+        Route::put('/weeks/{week}/days/{day}', [ProgramBuilderController::class, 'updateDay']);
+        Route::delete('/weeks/{week}/days/{day}', [ProgramBuilderController::class, 'deleteDay']);
+
+        // Exercise routes
+        Route::post('/weeks/{week}/days/{day}/exercises', [ProgramBuilderController::class, 'addExercise']);
+        Route::put('/weeks/{week}/days/{day}/exercises/{exercise}', [ProgramBuilderController::class, 'updateExercise']);
+        Route::delete('/weeks/{week}/days/{day}/exercises/{exercise}', [ProgramBuilderController::class, 'deleteExercise']);
     });
+
+    Route::put('/programs/{program}/weeks/{week}/days/{day}/exercises/{exercise}', [ProgramBuilderController::class, 'updateExercise']);
 });

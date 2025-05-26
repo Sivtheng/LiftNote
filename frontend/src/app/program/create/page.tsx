@@ -19,7 +19,6 @@ export default function CreateProgramPage() {
         title: '',
         description: '',
         client_id: '',
-        duration: '',
     });
 
     const getCsrfToken = async () => {
@@ -96,9 +95,43 @@ export default function CreateProgramPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // For now, just log the data and move to the next step
-        console.log('Form data:', formData);
-        // TODO: Add navigation to next step
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            const xsrfToken = await getCsrfToken();
+            const response = await fetch(`${API_URL}/programs/users/${formData.client_id}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-XSRF-TOKEN': xsrfToken
+                },
+                credentials: 'include',
+                mode: 'cors',
+                body: JSON.stringify({
+                    title: formData.title,
+                    description: formData.description,
+                    status: 'active'
+                })
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                console.error('Server response:', data);
+                throw new Error(data.message || data.error || 'Failed to create program');
+            }
+
+            const data = await response.json();
+            router.push(`/program/${data.program.id}`);
+        } catch (error) {
+            console.error('Error creating program:', error);
+            setError(error instanceof Error ? error.message : 'Failed to create program');
+        }
     };
 
     if (isAuthLoading || isLoading) {
@@ -140,20 +173,6 @@ export default function CreateProgramPage() {
                                     id="title"
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="block w-full px-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 text-lg"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label htmlFor="duration" className="block text-lg font-medium text-gray-900 mb-2">
-                                    What is the program duration?
-                                </label>
-                                <input
-                                    type="text"
-                                    id="duration"
-                                    value={formData.duration}
-                                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
                                     className="block w-full px-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 text-lg"
                                     required
                                 />

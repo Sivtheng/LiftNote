@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Exercise extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'description',
@@ -18,10 +22,15 @@ class Exercise extends Model
         return $this->belongsTo(User::class, 'created_by')->where('role', 'coach');
     }
 
-    public function programDays()
+    public function days(): BelongsToMany
     {
         return $this->belongsToMany(ProgramDay::class, 'program_day_exercises')
-            ->withPivot('target_types', 'values')
-            ->withTimestamps();
+            ->withPivot([
+                'sets',
+                'reps',
+                'time_seconds',
+                'measurement_type',
+                'measurement_value'
+            ]);
     }
 } 
