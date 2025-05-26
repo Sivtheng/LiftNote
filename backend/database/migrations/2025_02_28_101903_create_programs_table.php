@@ -18,6 +18,8 @@ return new class extends Migration
             $table->foreignId('coach_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('client_id')->constrained('users')->onDelete('cascade');
             $table->enum('status', ['active', 'completed', 'cancelled'])->default('active');
+            $table->integer('total_weeks')->default(12);
+            $table->integer('completed_weeks')->default(0);
             $table->timestamps();
         });
     }

@@ -19,6 +19,7 @@ export default function CreateProgramPage() {
         title: '',
         description: '',
         client_id: '',
+        total_weeks: 0,
     });
 
     const getCsrfToken = async () => {
@@ -116,7 +117,8 @@ export default function CreateProgramPage() {
                 body: JSON.stringify({
                     title: formData.title,
                     description: formData.description,
-                    status: 'active'
+                    status: 'active',
+                    total_weeks: formData.total_weeks
                 })
             });
 
@@ -207,6 +209,22 @@ export default function CreateProgramPage() {
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     rows={6}
+                                    className="block w-full px-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 text-lg"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="total_weeks" className="block text-lg font-medium text-gray-900 mb-2">
+                                    Program Duration (weeks)
+                                </label>
+                                <input
+                                    type="number"
+                                    id="total_weeks"
+                                    min="1"
+                                    max="52"
+                                    value={formData.total_weeks}
+                                    onChange={(e) => setFormData({ ...formData, total_weeks: parseInt(e.target.value) })}
                                     className="block w-full px-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 text-lg"
                                     required
                                 />

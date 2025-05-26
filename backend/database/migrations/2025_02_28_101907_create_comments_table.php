@@ -14,9 +14,11 @@ return new class extends Migration
         Schema::create('comments', function (Blueprint $table) {
             $table->id();
             $table->text('content');
+            $table->string('media_type')->nullable();
+            $table->string('media_url')->nullable();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('program_id')->nullable()->constrained()->onDelete('cascade');
-            $table->foreignId('progress_log_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('program_id')->constrained()->onDelete('cascade');
+            $table->foreignId('parent_id')->nullable()->constrained('comments')->onDelete('cascade');
             $table->timestamps();
         });
     }
@@ -28,4 +30,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('comments');
     }
-};
+}; 

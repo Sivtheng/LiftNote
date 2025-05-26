@@ -33,16 +33,6 @@ class DatabaseSeeder extends Seeder
             'bio' => 'Professional Fitness Coach',
         ]);
 
-        // Create Client User
-        User::create([
-            'name' => 'client',
-            'email' => 'client@liftnote.com',
-            'password' => Hash::make('password'),
-            'role' => 'client',
-            'phone_number' => '0987654321',
-            'bio' => 'Professional Fitness Client',
-        ]);
-
         // Create default questionnaire questions
         \App\Models\QuestionnaireQuestion::create([
             'key' => 'fitness_goals',
@@ -85,6 +75,12 @@ class DatabaseSeeder extends Seeder
             'options' => ['Morning', 'Afternoon', 'Evening'],
             'is_required' => true,
             'order' => 5
+        ]);
+
+        $this->call([
+            ClientSeeder::class,
+            ProgramSeeder::class,
+            CommentSeeder::class
         ]);
     }
 }

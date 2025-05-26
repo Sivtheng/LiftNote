@@ -16,11 +16,15 @@ class Program extends Model
         'description',
         'coach_id',
         'client_id',
-        'status'
+        'status',
+        'total_weeks',
+        'completed_weeks'
     ];
 
     protected $casts = [
-        'status' => 'string'
+        'status' => 'string',
+        'total_weeks' => 'integer',
+        'completed_weeks' => 'integer'
     ];
 
     public function coach(): BelongsTo
@@ -39,6 +43,11 @@ class Program extends Model
     }
 
     public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class)->whereNull('parent_id');
+    }
+
+    public function allComments(): HasMany
     {
         return $this->hasMany(Comment::class);
     }

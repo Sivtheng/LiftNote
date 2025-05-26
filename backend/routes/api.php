@@ -150,3 +150,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::put('/programs/{program}/weeks/{week}/days/{day}/exercises/{exercise}', [ProgramBuilderController::class, 'updateExercise']);
 });
+
+// Comment routes
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/programs/{program}/comments', [CommentController::class, 'index']);
+    Route::post('/programs/{program}/comments', [CommentController::class, 'store']);
+    Route::put('/comments/{comment}', [CommentController::class, 'update']);
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
+});

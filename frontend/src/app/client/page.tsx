@@ -142,38 +142,66 @@ export default function ClientListPage() {
                             <p className="text-gray-500 mb-4">You don't have any clients yet. Clients will appear here once they register.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {clients.map((client) => (
-                                <div 
-                                    key={client.id} 
-                                    className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200"
-                                >
-                                    <div className="p-6">
-                                        <div className="flex items-center space-x-4">
-                                            <div className="flex-shrink-0">
-                                                <div className="h-16 w-16 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                    <span className="text-2xl font-medium text-indigo-600">
-                                                        {client.name.charAt(0).toUpperCase()}
-                                                    </span>
+                        <div className="bg-white shadow rounded-lg overflow-hidden">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Name
+                                        </th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Program
+                                        </th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Assignment Date
+                                        </th>
+                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Action
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {clients.map((client) => (
+                                        <tr key={client.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center">
+                                                    <div className="flex-shrink-0 h-10 w-10">
+                                                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                            <span className="text-lg font-medium text-indigo-600">
+                                                                {client.name.charAt(0).toUpperCase()}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="ml-4">
+                                                        <div className="text-sm font-medium text-gray-900">{client.name}</div>
+                                                        <div className="text-sm text-gray-500">{client.email}</div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h2 className="text-lg font-medium text-gray-900 truncate">
-                                                    {client.name}
-                                                </h2>
-                                            </div>
-                                        </div>
-                                        <div className="mt-4">
-                                            <button
-                                                onClick={() => router.push(`/client/${client.id}`)}
-                                                className="w-full inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
-                                            >
-                                                View Details
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-gray-900">
+                                                    {client.current_program?.title || 'No program assigned'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="text-sm text-gray-900">
+                                                    {client.current_program?.created_at 
+                                                        ? new Date(client.current_program.created_at).toLocaleDateString()
+                                                        : 'N/A'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                <button
+                                                    onClick={() => router.push(`/client/${client.id}`)}
+                                                    className="text-indigo-600 hover:text-indigo-900"
+                                                >
+                                                    View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>

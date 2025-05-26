@@ -472,8 +472,10 @@ class AuthController extends Controller
                 ], 403);
             }
 
-            // Get all users with role 'client'
-            $users = User::where('role', 'client')->get();
+            // Get all users with role 'client' and load their current program
+            $users = User::where('role', 'client')
+                ->with(['current_program'])
+                ->get();
 
             return response()->json([
                 'message' => 'Users retrieved successfully',

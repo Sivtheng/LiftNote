@@ -68,6 +68,13 @@ class User extends Authenticatable
         return $this->hasOne(Questionnaire::class, 'client_id');
     }
 
+    public function current_program()
+    {
+        return $this->hasOne(Program::class, 'client_id')
+            ->where('status', 'active')
+            ->latest();
+    }
+
     public function createdExercises()
     {
         return $this->hasMany(Exercise::class, 'created_by');

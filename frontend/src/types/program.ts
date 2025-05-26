@@ -16,6 +16,10 @@ export interface Program {
     weeks: ProgramWeek[];
     progress_logs: ProgressLog[];
     comments: Comment[];
+    completed_weeks: number;
+    total_weeks: number;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface ProgramWeek {
@@ -71,11 +75,17 @@ export interface ProgressLog {
 export interface Comment {
     id: number;
     content: string;
-    user_id?: number;
-    program_id?: number;
-    progress_log_id?: number;
+    media_type: 'text' | 'video' | 'image';
+    media_url: string | null;
+    user_id: number;
+    program_id: number;
+    parent_id: number | null;
+    created_at: string;
+    updated_at: string;
     user: {
+        id: number;
         name: string;
+        email: string;
     };
-    created_at?: string;
+    replies?: Comment[];
 } 

@@ -11,6 +11,71 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class CommentController extends Controller
 {
+    public function index($programId)
+    {
+        $comments = Comment::where('program_id', $programId)
+            ->whereNull('parent_id')
+            ->with(['user', 'replies.user'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['comments' => $comments]);
+    }
+
+    public function store(Request $request, $programId)
+    {
+        $request->validate([
+            'content' => 'required|string',
+            'media_type' => 'nullable|in:text,video,image',
+            'media_url' => 'nullable|url',
+            'parent_id' => 'nullable|exists:comments,id'
+        ]);
+
+        $comment = Comment::create([
+            'content' => $request->content,
+            'media_type' => $request->media_type ?? 'text',
+            'media_url' => $request->media_url,
+            'user_id' => auth()->id(),
+            'program_id' => $programId,
+            'parent_id' => $request->parent_id
+        ]);
+
+        return response()->json([
+            'message' => 'Comment created successfully',
+            'comment' => $comment->load(['user', 'replies.user'])
+        ], 201);
+    }
+
+    public function update(Request $request, Comment $comment)
+    {
+        $this->authorize('update', $comment);
+
+        $request->validate([
+            'content' => 'required|string',
+            'media_type' => 'nullable|in:text,video,image',
+            'media_url' => 'nullable|url|required_if:media_type,video,image'
+        ]);
+
+        $comment->update([
+            'content' => $request->content,
+            'media_type' => $request->media_type ?? 'text',
+            'media_url' => $request->media_url
+        ]);
+
+        $comment->load('user');
+
+        return response()->json(['comment' => $comment]);
+    }
+
+    public function destroy(Comment $comment)
+    {
+        $this->authorize('delete', $comment);
+
+        $comment->delete();
+
+        return response()->json(null, 204);
+    }
+
     // Add comment to a program
     public function addProgramComment(Request $request, Program $program)
     {

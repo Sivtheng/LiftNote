@@ -34,7 +34,8 @@ class ProgramController extends Controller
                 $validated = $request->validate([
                     'title' => 'required|string|max:255',
                     'description' => 'required|string',
-                    'status' => 'required|in:active,completed,cancelled'
+                    'status' => 'required|in:active,completed,cancelled',
+                    'total_weeks' => 'required|integer|min:1|max:52'
                 ]);
 
                 $program = Program::create([
@@ -42,7 +43,8 @@ class ProgramController extends Controller
                     'description' => $validated['description'],
                     'status' => $validated['status'],
                     'coach_id' => $request->coach_id ?? Auth::id(),
-                    'client_id' => $client->id
+                    'client_id' => $client->id,
+                    'total_weeks' => $validated['total_weeks']
                 ]);
 
                 return response()->json([
@@ -318,7 +320,8 @@ class ProgramController extends Controller
                 'description' => 'required|string',
                 'coach_id' => 'required|exists:users,id',
                 'client_id' => 'required|exists:users,id',
-                'status' => 'required|in:active,completed,cancelled'
+                'status' => 'required|in:active,completed,cancelled',
+                'total_weeks' => 'required|integer|min:1|max:52'
             ]);
 
             $program = Program::create($validated);

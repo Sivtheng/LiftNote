@@ -7,6 +7,11 @@ export interface Client {
     profile_picture?: string;
     created_at?: string;
     updated_at?: string;
+    current_program?: {
+        id: number;
+        title: string;
+        created_at: string;
+    };
 }
 
 export interface Questionnaire {
