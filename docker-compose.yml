@@ -35,26 +35,6 @@ services:
     networks:
       - liftnote
 
-  mobile:
-    build:
-      context: .
-      dockerfile: docker/mobile.Dockerfile
-    container_name: mobile
-    ports:
-      - "19000:19000"  # Expo dev server
-      - "19001:19001"  # Expo dev tools
-      - "19002:19002"  # Expo web
-    volumes:
-      - ./mobile:/app
-      - /app/node_modules
-    environment:
-      - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
-      - REACT_NATIVE_PACKAGER_HOSTNAME=localhost
-    depends_on:
-      - backend
-    networks:
-      - liftnote
-
   liftnote_db:
     image: mysql:8.0
     container_name: liftnote_db
