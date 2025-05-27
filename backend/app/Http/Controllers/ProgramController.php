@@ -192,7 +192,7 @@ class ProgramController extends Controller
     {
         try {
             $programs = Program::where('client_id', Auth::id())
-                ->with(['coach', 'progressLogs'])
+                ->with(['coach', 'client', 'progressLogs'])
                 ->get();
 
             return response()->json([
