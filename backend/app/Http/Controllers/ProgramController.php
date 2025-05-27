@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\HandlesResponses;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Models\ProgramWeek;
 
 class ProgramController extends Controller
 {
@@ -348,5 +349,52 @@ class ProgramController extends Controller
         $coaches = User::where('role', 'coach')->get();
         $clients = User::where('role', 'client')->get();
         return view('admin.programs.edit', compact('program', 'coaches', 'clients'));
+    }
+
+    // Mark a week as complete
+    public function markWeekComplete(Request $request, Program $program, ProgramWeek $week)
+    {
+        try {
+            // Verify week belongs to program
+            if ($week->program_id !== $program->id) {
+                return response()->json([
+                    'message' => 'Week does not belong to this program'
+                ], 400);
+            }
+
+            // Only client can mark their own program's week as complete
+            if (Auth::id() !== $program->client_id) {
+                return response()->json([
+                    'message' => 'Only the client can mark weeks as complete'
+                ], 403);
+            }
+
+            // Check if this week is the next one to be completed
+            if ($week->order !== $program->completed_weeks + 1) {
+                return response()->json([
+                    'message' => 'Can only mark the next week in sequence as complete'
+                ], 400);
+            }
+
+            // Update program's completed weeks
+            $program->update([
+                'completed_weeks' => $program->completed_weeks + 1
+            ]);
+
+            // If all weeks are completed, mark program as completed
+            if ($program->completed_weeks >= $program->total_weeks) {
+                $program->update(['status' => 'completed']);
+            }
+
+            return response()->json([
+                'message' => 'Week marked as complete',
+                'program' => $program->fresh()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error marking week as complete',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

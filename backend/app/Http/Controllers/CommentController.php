@@ -337,4 +337,33 @@ class CommentController extends Controller
             ], 500);
         }
     }
+
+    // Get recent comments across all programs
+    public function getRecentComments()
+    {
+        try {
+            $user = Auth::user();
+            
+            // Get comments from clients in programs where user is either coach or client
+            $comments = Comment::whereHas('program', function ($query) use ($user) {
+                $query->where('coach_id', $user->id)
+                    ->orWhere('client_id', $user->id);
+            })
+            ->whereHas('user', function ($query) {
+                $query->where('role', 'client');
+            })
+            ->whereNotNull('program_id')
+            ->with(['user', 'program'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+            return response()->json(['comments' => $comments]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error fetching recent comments',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

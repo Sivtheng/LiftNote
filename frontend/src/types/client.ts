@@ -11,6 +11,8 @@ export interface Client {
         id: number;
         title: string;
         created_at: string;
+        completed_weeks: number;
+        total_weeks: number;
     };
 }
 

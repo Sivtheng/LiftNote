@@ -48,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/coach', [ProgramController::class, 'getCoachPrograms']);
             Route::put('/{program}', [ProgramController::class, 'update']);
             Route::delete('/{program}', [ProgramController::class, 'destroy']);
+            Route::post('/{program}/weeks/{week}/complete', [ProgramController::class, 'markWeekComplete']);
         });
 
         // Client Routes
@@ -153,6 +154,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Comment routes
 Route::middleware(['auth:sanctum'])->group(function () {
+    Route::get('/comments/recent', [CommentController::class, 'getRecentComments']);
     Route::get('/programs/{program}/comments', [CommentController::class, 'index']);
     Route::post('/programs/{program}/comments', [CommentController::class, 'store']);
     Route::put('/comments/{comment}', [CommentController::class, 'update']);
