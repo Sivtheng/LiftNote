@@ -219,11 +219,11 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
 
                 {/* Comments Section */}
                 <div className="mt-8">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Comments</h2>
+                    <h2 className="text-2xl font-bold text-black mb-6">Comments</h2>
                     
                     {/* Comment Form */}
                     <form onSubmit={handleSubmitComment} className="mb-8">
-                        <div className="bg-white rounded-lg shadow p-4">
+                        <div className="bg-white rounded-lg shadow p-4 text-black">
                             <textarea
                                 value={newComment.content}
                                 onChange={(e) => setNewComment(prev => ({ ...prev, content: e.target.value }))}
