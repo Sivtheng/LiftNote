@@ -19,6 +19,7 @@ return new class extends Migration
             $table->integer('reps')->nullable();
             $table->integer('time_seconds')->nullable();
             $table->integer('rpe')->nullable();
+            $table->integer('workout_duration')->nullable()->after('completed_at');
             $table->timestamp('completed_at');
             $table->timestamps();
         });

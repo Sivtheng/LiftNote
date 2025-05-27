@@ -20,12 +20,14 @@ class ProgressLog extends Model
         'reps',
         'time_seconds',
         'rpe',
-        'completed_at'
+        'completed_at',
+        'workout_duration'
     ];
 
     protected $casts = [
         'completed_at' => 'datetime',
         'weight' => 'decimal:2',
+        'workout_duration' => 'integer'
     ];
 
     public function program(): BelongsTo
