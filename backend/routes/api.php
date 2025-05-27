@@ -88,6 +88,11 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     });
 
+    // Progress Log Routes
+    Route::post('/programs/{program}/progress', [ProgressLogController::class, 'store']);
+    Route::get('/programs/{program}/progress', [ProgressLogController::class, 'getProgramLogs']);
+    Route::get('/programs/{program}/days/{dayId}/progress', [ProgressLogController::class, 'getDayLogs']);
+
     // Progress Log Routes (for specific logs)
     Route::prefix('progress-logs')->group(function () {
         Route::get('/{progressLog}', [ProgressLogController::class, 'show']);

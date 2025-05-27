@@ -4,31 +4,53 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProgressLog extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'title',
-        'description',
-        'client_id',
         'program_id',
-        'date'
+        'user_id',
+        'exercise_id',
+        'week_id',
+        'day_id',
+        'weight',
+        'reps',
+        'time_seconds',
+        'rpe',
+        'completed_at'
     ];
 
     protected $casts = [
-        'date' => 'datetime'
+        'completed_at' => 'datetime',
+        'weight' => 'decimal:2',
     ];
 
-    public function client()
-    {
-        return $this->belongsTo(User::class, 'client_id')->where('role', 'client');
-    }
-
-    public function program()
+    public function program(): BelongsTo
     {
         return $this->belongsTo(Program::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function exercise(): BelongsTo
+    {
+        return $this->belongsTo(Exercise::class);
+    }
+
+    public function week(): BelongsTo
+    {
+        return $this->belongsTo(ProgramWeek::class, 'week_id');
+    }
+
+    public function day(): BelongsTo
+    {
+        return $this->belongsTo(ProgramDay::class, 'day_id');
     }
 
     public function comments()

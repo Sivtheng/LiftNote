@@ -80,7 +80,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ClientSeeder::class,
             ProgramSeeder::class,
-            CommentSeeder::class
+            CommentSeeder::class,
+            ProgressLogSeeder::class,
         ]);
     }
 }

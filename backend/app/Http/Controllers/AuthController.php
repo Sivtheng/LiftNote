@@ -83,17 +83,29 @@ class AuthController extends Controller
                 ], 401);
             }
 
+            // Check if this is a mobile app request
+            $isMobileApp = $request->header('X-Requested-With') === 'XMLHttpRequest' && 
+                          $request->header('Accept') === 'application/json' &&
+                          strpos($request->header('Origin'), 'localhost:3000') === false;
+
+            // Only allow client login for mobile app
+            if ($isMobileApp && !$user->isClient()) {
+                return response()->json([
+                    'message' => 'Only clients can log in through the mobile app'
+                ], 403);
+            }
+
             // Delete any existing tokens for this user
             $user->tokens()->delete();
 
             // Create new token with 1 hour expiration
             $token = $user->createToken('AuthToken', ['*'], now()->addHour())->plainTextToken;
 
-            // Load appropriate relationships based on role
+            // Load appropriate relationships based on user role
             if ($user->isClient()) {
-                $user->load('progressLogs');
+                $user->load(['current_program', 'current_program.weeks', 'current_program.weeks.days', 'current_program.weeks.days.exercises']);
             } elseif ($user->isCoach()) {
-                $user->load('programs');
+                $user->load(['programs']);
             }
 
             return response()->json([
@@ -102,10 +114,6 @@ class AuthController extends Controller
                 'token' => $token,
                 'expires_at' => now()->addHour()->toDateTimeString()
             ]);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'User not found'
-            ], 404);
         } catch (\Exception $e) {
             Log::error('Login error: ' . $e->getMessage());
             return response()->json([

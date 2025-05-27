@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { programService, commentService, authService } from '../services/api';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type RootStackParamList = {
+    DailyExercises: undefined;
+};
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 interface Comment {
     content: string;
@@ -28,6 +36,7 @@ export default function HomeScreen() {
     const [recentComments, setRecentComments] = useState<TransformedComment[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const navigation = useNavigation<NavigationProp>();
 
     useEffect(() => {
         fetchData();
@@ -125,6 +134,12 @@ export default function HomeScreen() {
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Current Progress</Text>
                     <Text style={styles.cardText}>{currentWeek} - {currentDay}</Text>
+                    <TouchableOpacity 
+                        style={styles.startButton}
+                        onPress={() => navigation.navigate('DailyExercises')}
+                    >
+                        <Text style={styles.startButtonText}>Start Workout</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.card}>
@@ -278,5 +293,17 @@ const styles = StyleSheet.create({
     noCommentsText: {
         color: '#666',
         fontStyle: 'italic',
+    },
+    startButton: {
+        backgroundColor: '#007AFF',
+        padding: 15,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginTop: 15,
+    },
+    startButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 }); 

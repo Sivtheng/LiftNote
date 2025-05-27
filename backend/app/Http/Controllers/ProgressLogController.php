@@ -31,13 +31,13 @@ class ProgressLogController extends Controller
                 'title' => $validated['title'],
                 'description' => $validated['description'],
                 'date' => $validated['date'],
-                'client_id' => Auth::id(),
+                'user_id' => Auth::id(),
                 'program_id' => $program->id
             ]);
 
             return response()->json([
                 'message' => 'Progress log created successfully',
-                'progress_log' => $progressLog->load(['client', 'program'])
+                'progress_log' => $progressLog->load(['user', 'program'])
             ], 201);
         } catch (ModelNotFoundException $e) {
             return response()->json([
@@ -53,30 +53,29 @@ class ProgressLogController extends Controller
 
     public function getProgramLogs(Program $program)
     {
-        try {
-            $user = Auth::user();
-            if (!$user->isAdmin() && 
-                $program->coach_id !== $user->id && 
-                $program->client_id !== $user->id) {
-                return response()->json([
-                    'message' => 'Unauthorized'
-                ], 403);
-            }
+        $logs = ProgressLog::with(['exercise', 'week', 'day'])
+            ->where('program_id', $program->id)
+            ->where('user_id', Auth::id())
+            ->orderBy('completed_at', 'desc')
+            ->get();
 
-            $logs = $program->progressLogs()
-                ->with(['client'])
-                ->orderBy('date', 'desc')
-                ->get();
+        return response()->json([
+            'logs' => $logs
+        ]);
+    }
 
-            return response()->json([
-                'logs' => $logs
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error fetching progress logs',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+    public function getDayLogs(Program $program, $dayId)
+    {
+        $logs = ProgressLog::with(['exercise'])
+            ->where('program_id', $program->id)
+            ->where('user_id', Auth::id())
+            ->where('day_id', $dayId)
+            ->orderBy('completed_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'logs' => $logs
+        ]);
     }
 
     // Web Admin Methods
@@ -95,29 +94,36 @@ class ProgressLogController extends Controller
         return view('admin.progress-logs.create', compact('programs', 'clients'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, Program $program)
     {
-        try {
-            $validated = $request->validate([
-                'title' => 'required|string|max:255',
-                'description' => 'required|string',
-                'date' => 'required|date',
-                'client_id' => 'required|exists:users,id',
-                'program_id' => 'required|exists:programs,id'
-            ]);
+        $request->validate([
+            'exercise_id' => 'required|exists:exercises,id',
+            'day_id' => 'required|exists:program_days,id',
+            'week_id' => 'required|exists:program_weeks,id',
+            'weight' => 'nullable|numeric|min:0',
+            'reps' => 'nullable|integer|min:0',
+            'time_seconds' => 'nullable|integer|min:0',
+            'rpe' => 'nullable|integer|min:1|max:10',
+            'completed_at' => 'required|date'
+        ]);
 
-            $progressLog = ProgressLog::create($validated);
+        $log = ProgressLog::create([
+            'program_id' => $program->id,
+            'user_id' => Auth::id(),
+            'exercise_id' => $request->exercise_id,
+            'day_id' => $request->day_id,
+            'week_id' => $request->week_id,
+            'weight' => $request->weight,
+            'reps' => $request->reps,
+            'time_seconds' => $request->time_seconds,
+            'rpe' => $request->rpe,
+            'completed_at' => $request->completed_at
+        ]);
 
-            return $this->respondTo([
-                'message' => 'Progress log created successfully',
-                'progress_log' => $progressLog
-            ], 'progress-logs.index');
-        } catch (\Exception $e) {
-            return $this->respondTo([
-                'message' => 'Error creating progress log',
-                'error' => $e->getMessage()
-            ]);
-        }
+        return response()->json([
+            'message' => 'Progress log created successfully',
+            'log' => $log
+        ], 201);
     }
 
     public function show(ProgressLog $progressLog)

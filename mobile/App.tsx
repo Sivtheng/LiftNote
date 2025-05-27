@@ -7,6 +7,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import QuestionnaireScreen from './src/screens/QuestionnaireScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import DailyExercisesScreen from './src/screens/DailyExercisesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -58,6 +59,7 @@ export default function App() {
                 <Stack.Screen name="Login" component={LoginScreen} />
                 <Stack.Screen name="Questionnaire" component={QuestionnaireScreen} />
                 <Stack.Screen name="MainApp" component={TabNavigator} />
+                <Stack.Screen name="DailyExercises" component={DailyExercisesScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );

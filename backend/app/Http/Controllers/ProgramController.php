@@ -192,7 +192,20 @@ class ProgramController extends Controller
     {
         try {
             $programs = Program::where('client_id', Auth::id())
-                ->with(['coach', 'client', 'progressLogs'])
+                ->with([
+                    'coach',
+                    'client',
+                    'progressLogs',
+                    'weeks' => function($query) {
+                        $query->orderBy('order');
+                    },
+                    'weeks.days' => function($query) {
+                        $query->orderBy('order');
+                    },
+                    'weeks.days.exercises' => function($query) {
+                        $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
+                    }
+                ])
                 ->get();
 
             return response()->json([

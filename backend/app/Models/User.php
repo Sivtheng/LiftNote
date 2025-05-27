@@ -60,7 +60,7 @@ class User extends Authenticatable
 
     public function progressLogs(): HasMany
     {
-        return $this->hasMany(ProgressLog::class, 'client_id');
+        return $this->hasMany(ProgressLog::class, 'user_id');
     }
 
     public function questionnaire(): HasOne
