@@ -52,6 +52,8 @@ interface Program {
     id: number;
     title: string;
     weeks: Week[];
+    current_week?: Week;
+    current_day?: Day;
 }
 
 interface ExerciseLog {
@@ -179,32 +181,17 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
     const fetchProgramData = async () => {
         try {
             const response = await programService.getClientPrograms();
-            console.log('Program response:', JSON.stringify(response, null, 2));
             
             if (response.programs && response.programs.length > 0) {
                 const programData = response.programs[0];
-                console.log('Selected program:', JSON.stringify(programData, null, 2));
                 setProgram(programData);
                 
-                // Get current week (completed_weeks + 1)
-                const currentWeekIndex = programData.completed_weeks;
-                console.log('Current week index:', currentWeekIndex);
-                
-                if (programData.weeks && programData.weeks[currentWeekIndex]) {
-                    const week = programData.weeks[currentWeekIndex];
-                    console.log('Selected week:', JSON.stringify(week, null, 2));
-                    setCurrentWeek(week);
-                    
-                    // Get first day of the week
-                    if (week.days && week.days.length > 0) {
-                        const day = week.days[0];
-                        console.log('Selected day:', JSON.stringify(day, null, 2));
-                        setCurrentDay(day);
-                    } else {
-                        console.log('No days found in week');
-                    }
+                // Get current week and day from the program
+                if (programData.current_week && programData.current_day) {
+                    setCurrentWeek(programData.current_week);
+                    setCurrentDay(programData.current_day);
                 } else {
-                    console.log('No week found at index:', currentWeekIndex);
+                    console.log('No current week/day found in program');
                 }
             } else {
                 console.log('No programs found in response');
@@ -231,6 +218,21 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
         saveExerciseLogs(newLogs);
     };
 
+    const checkIncompleteExercises = () => {
+        const incompleteExercises = [];
+        for (const exercise of currentDay?.exercises || []) {
+            const sets = exercise.pivot?.sets || exercise.sets;
+            for (let setIndex = 0; setIndex < sets; setIndex++) {
+                const log = exerciseLogs[exercise.id]?.[setIndex];
+                if (!log || !Object.values(log).some(value => value !== '')) {
+                    incompleteExercises.push(exercise.name);
+                    break;
+                }
+            }
+        }
+        return incompleteExercises;
+    };
+
     const handleFinish = async () => {
         try {
             if (timerRef.current) {
@@ -241,25 +243,39 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
             await saveWorkoutState(false);
             await AsyncStorage.removeItem(EXERCISE_LOGS_KEY);
 
-            // Create progress log for each exercise and set
-            for (const exercise of currentDay?.exercises || []) {
-                const sets = exercise.pivot?.sets || exercise.sets;
-                for (let setIndex = 0; setIndex < sets; setIndex++) {
-                    const log = exerciseLogs[exercise.id]?.[setIndex];
-                    if (log) {
+            // If it's a rest day (no exercises), create a single rest day log
+            if (!currentDay?.exercises || currentDay.exercises.length === 0) {
+                const restDayLog = {
+                    day_id: currentDay?.id,
+                    week_id: currentWeek?.id,
+                    weight: 0,
+                    reps: 0,
+                    time_seconds: 0,
+                    rpe: null,
+                    completed_at: new Date().toISOString(),
+                    workout_duration: 0,
+                    is_rest_day: true
+                };
+                
+                await progressLogService.createLog(program?.id.toString() || '', restDayLog);
+            } else {
+                // Create progress log for each exercise and set
+                for (const exercise of currentDay?.exercises || []) {
+                    const sets = exercise.pivot?.sets || exercise.sets;
+                    for (let setIndex = 0; setIndex < sets; setIndex++) {
+                        const log = exerciseLogs[exercise.id]?.[setIndex];
                         const logData = {
                             exercise_id: exercise.id,
                             day_id: currentDay?.id,
                             week_id: currentWeek?.id,
-                            weight: log.kg ? parseFloat(log.kg) : 0,
-                            reps: log.reps ? parseInt(log.reps) : 0,
-                            time_seconds: log.time_seconds ? parseInt(log.time_seconds) : 0,
-                            rpe: log.rpe ? parseInt(log.rpe) : 0,
+                            weight: log?.kg ? parseFloat(log.kg) : 0,
+                            reps: log?.reps ? parseInt(log.reps) : 0,
+                            time_seconds: log?.time_seconds ? parseInt(log.time_seconds) : 0,
+                            rpe: log?.rpe ? parseInt(log.rpe) : null,
                             completed_at: new Date().toISOString(),
                             workout_duration: workoutDuration
                         };
                         
-                        console.log('Sending log data:', logData);
                         await progressLogService.createLog(program?.id.toString() || '', logData);
                     }
                 }
@@ -277,22 +293,43 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
     };
 
     const handleFinishPress = () => {
-        Alert.alert(
-            "Finish Workout",
-            "Are you sure you want to finish this workout?",
-            [
-                {
-                    text: "Cancel",
-                    style: "cancel"
-                },
-                {
-                    text: "Finish",
-                    style: "destructive",
-                    onPress: handleFinish
-                }
-            ],
-            { cancelable: true }
-        );
+        const incompleteExercises = checkIncompleteExercises();
+        
+        if (incompleteExercises.length > 0) {
+            Alert.alert(
+                "Incomplete Workout",
+                `You have ${incompleteExercises.length} incomplete exercise${incompleteExercises.length > 1 ? 's' : ''}: ${incompleteExercises.join(', ')}.\n\nWould you like to skip the remaining sets?`,
+                [
+                    {
+                        text: "Cancel",
+                        style: "cancel"
+                    },
+                    {
+                        text: "Skip Remaining",
+                        style: "destructive",
+                        onPress: handleFinish
+                    }
+                ],
+                { cancelable: true }
+            );
+        } else {
+            Alert.alert(
+                "Finish Workout",
+                "Are you sure you want to finish this workout?",
+                [
+                    {
+                        text: "Cancel",
+                        style: "cancel"
+                    },
+                    {
+                        text: "Finish",
+                        style: "destructive",
+                        onPress: handleFinish
+                    }
+                ],
+                { cancelable: true }
+            );
+        }
     };
 
     const renderExerciseInputs = (exercise: Exercise, setIndex: number) => {
@@ -381,6 +418,46 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
         return (
             <SafeAreaView style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#007AFF" />
+            </SafeAreaView>
+        );
+    }
+
+    if (!program || !currentWeek || !currentDay) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Ionicons name="chevron-back" size={24} color="#007AFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Daily Exercises</Text>
+                </View>
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>No program or exercises available</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    if (!currentDay.exercises || currentDay.exercises.length === 0) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <Ionicons name="chevron-back" size={24} color="#007AFF" />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Daily Exercises</Text>
+                </View>
+                <View style={styles.restDayContainer}>
+                    <Ionicons name="bed-outline" size={80} color="#007AFF" style={styles.restIcon} />
+                    <Text style={styles.restDayTitle}>Rest Day</Text>
+                    <Text style={styles.restDayText}>Today is a rest day. Take time to recover and prepare for your next workout.</Text>
+                    <TouchableOpacity 
+                        style={styles.doneRestingButton}
+                        onPress={handleFinishPress}
+                    >
+                        <Text style={styles.doneRestingButtonText}>Done Resting</Text>
+                    </TouchableOpacity>
+                </View>
             </SafeAreaView>
         );
     }
@@ -559,5 +636,57 @@ const styles = StyleSheet.create({
     disabledInput: {
         backgroundColor: '#f0f0f0',
         color: '#999',
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emptyText: {
+        color: '#666',
+        fontSize: 16,
+    },
+    restDayContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+        backgroundColor: '#fff',
+    },
+    restIcon: {
+        marginBottom: 20,
+    },
+    restDayTitle: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        marginBottom: 15,
+        color: '#007AFF',
+    },
+    restDayText: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+        marginBottom: 30,
+        lineHeight: 24,
+    },
+    doneRestingButton: {
+        backgroundColor: '#007AFF',
+        paddingHorizontal: 30,
+        paddingVertical: 15,
+        borderRadius: 10,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    doneRestingButtonText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: 'bold',
     },
 }); 

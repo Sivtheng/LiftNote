@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { programService, commentService, authService } from '../services/api';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
@@ -38,16 +38,16 @@ export default function HomeScreen() {
     const [error, setError] = useState<string | null>(null);
     const navigation = useNavigation<NavigationProp>();
 
-    useEffect(() => {
-        fetchData();
-    }, []);
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchData();
+        }, [])
+    );
 
     const fetchData = async () => {
         try {
             setError(null);
-            console.log('Fetching program data...');
             const programData = await programService.getClientPrograms();
-            console.log('Program data received:', programData);
 
             if (!programData || !programData.programs || programData.programs.length === 0) {
                 throw new Error('No program data available');
@@ -63,15 +63,26 @@ export default function HomeScreen() {
 
             // Set client name from the program's client data
             setClientName(currentProgram.client?.name || 'Guest');
-            setCurrentWeek(`Week ${currentProgram.completed_weeks + 1}`);
-            setCurrentDay('Day 1'); // You might want to calculate this based on your program structure
+            
+            // Get current week and day from the program
+            const currentWeek = currentProgram.current_week;
+            const currentDay = currentProgram.current_day;
+            
+            // If we have a current day but no current week, something is wrong
+            if (currentDay && !currentWeek) {
+                console.error('Program has current day but no current week:', currentProgram);
+                setCurrentWeek('Error: No Week Assigned');
+                setCurrentDay(`Day ${currentDay.order}`);
+            } else {
+                setCurrentWeek(currentWeek ? `Week ${currentWeek.order}` : 'No Week Assigned');
+                setCurrentDay(currentDay ? `Day ${currentDay.order}` : 'No Day Assigned');
+            }
+            
             setProgramName(currentProgram.title || 'No Program Assigned');
             setCompletionPercentage(completion);
 
             // Fetch comments for this program
-            console.log('Fetching comments data...');
             const commentsData = await commentService.getRecentComments(currentProgram.id.toString());
-            console.log('Comments data received:', commentsData);
 
             // Transform comments data to match our expected format
             if (commentsData && commentsData.comments) {

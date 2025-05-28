@@ -30,8 +30,6 @@ export default function LoginScreen({ navigation }: any) {
             // Check questionnaire status
             try {
                 const questionnaireResponse = await questionnaireService.getQuestions();
-                console.log('Questionnaire response:', questionnaireResponse);
-                console.log('Questionnaire status:', questionnaireResponse.questionnaire?.status);
                 if (questionnaireResponse.questionnaire?.status === 'completed') {
                     // If questionnaire is completed, go to main app
                     navigation.replace('MainApp');

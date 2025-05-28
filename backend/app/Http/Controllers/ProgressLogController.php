@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Program;
 use App\Models\ProgressLog;
 use App\Models\User;
+use App\Models\ProgramWeek;
+use App\Models\ProgramDay;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Log;
 
 class ProgressLogController extends Controller
 {
@@ -96,34 +99,138 @@ class ProgressLogController extends Controller
 
     public function store(Request $request, Program $program)
     {
-        $request->validate([
-            'exercise_id' => 'required|exists:exercises,id',
-            'day_id' => 'required|exists:program_days,id',
-            'week_id' => 'required|exists:program_weeks,id',
-            'weight' => 'nullable|numeric|min:0',
-            'reps' => 'nullable|integer|min:0',
-            'time_seconds' => 'nullable|integer|min:0',
-            'rpe' => 'nullable|integer|min:1|max:10',
-            'completed_at' => 'required|date'
-        ]);
+        try {
+            \Log::info('Creating progress log', [
+                'program_id' => $program->id,
+                'user_id' => Auth::id(),
+                'request_data' => $request->all()
+            ]);
 
-        $log = ProgressLog::create([
-            'program_id' => $program->id,
-            'user_id' => Auth::id(),
-            'exercise_id' => $request->exercise_id,
-            'day_id' => $request->day_id,
-            'week_id' => $request->week_id,
-            'weight' => $request->weight,
-            'reps' => $request->reps,
-            'time_seconds' => $request->time_seconds,
-            'rpe' => $request->rpe,
-            'completed_at' => $request->completed_at
-        ]);
+            $validated = $request->validate([
+                'exercise_id' => 'required_unless:is_rest_day,true|exists:exercises,id',
+                'day_id' => 'required|exists:program_days,id',
+                'week_id' => 'required|exists:program_weeks,id',
+                'weight' => 'nullable|numeric|min:0',
+                'reps' => 'nullable|integer|min:0',
+                'time_seconds' => 'nullable|integer|min:0',
+                'rpe' => 'nullable|numeric',
+                'completed_at' => 'required|date',
+                'workout_duration' => 'nullable|integer|min:0',
+                'is_rest_day' => 'boolean'
+            ]);
 
-        return response()->json([
-            'message' => 'Progress log created successfully',
-            'log' => $log
-        ], 201);
+            \Log::info('Validation passed', ['validated_data' => $validated]);
+
+            // Create the progress log
+            $progressLog = ProgressLog::create([
+                'program_id' => $program->id,
+                'user_id' => Auth::id(),
+                'exercise_id' => $request->exercise_id,
+                'day_id' => $request->day_id,
+                'week_id' => $request->week_id,
+                'weight' => $request->weight,
+                'reps' => $request->reps,
+                'time_seconds' => $request->time_seconds,
+                'rpe' => $request->rpe,
+                'completed_at' => $request->completed_at,
+                'workout_duration' => $request->workout_duration,
+                'is_rest_day' => $request->is_rest_day ?? false
+            ]);
+
+            // Check if this is the last exercise for this day
+            $currentWeek = ProgramWeek::findOrFail($request->week_id);
+            $currentDay = ProgramDay::findOrFail($request->day_id);
+            
+            // Get all exercises for this day
+            $dayExercises = $currentDay->exercises()->count();
+            // Count how many logs we have for this day
+            $completedExercises = ProgressLog::where('program_id', $program->id)
+                ->where('user_id', Auth::id())
+                ->where('day_id', $request->day_id)
+                ->whereDate('completed_at', date('Y-m-d'))
+                ->count();
+
+            // Only update program progress if all exercises for the day are completed
+            if ($completedExercises >= $dayExercises) {
+                // Check if this is the last day of the week
+                $isLastDayOfWeek = $currentDay->order === $currentWeek->days()->max('order');
+                
+                if ($isLastDayOfWeek) {
+                    // Check if this is the last week
+                    $isLastWeek = $currentWeek->order === $program->weeks()->max('order');
+                    
+                    if ($isLastWeek) {
+                        // Mark program as completed
+                        $program->update([
+                            'status' => 'completed',
+                            'completed_at' => now()
+                        ]);
+                        Log::info('Program completed', ['program_id' => $program->id]);
+                    } else {
+                        // Move to first day of next week
+                        $nextWeek = $program->weeks()
+                            ->where('order', '>', $currentWeek->order)
+                            ->orderBy('order')
+                            ->first();
+                        
+                        if ($nextWeek) {
+                            $firstDayOfNextWeek = $nextWeek->days()->orderBy('order')->first();
+                            $program->update([
+                                'current_week_id' => $nextWeek->id,
+                                'current_day_id' => $firstDayOfNextWeek->id,
+                                'completed_weeks' => $program->completed_weeks + 1
+                            ]);
+                            Log::info('Moved to next week', [
+                                'program_id' => $program->id,
+                                'new_week_id' => $nextWeek->id,
+                                'new_day_id' => $firstDayOfNextWeek->id
+                            ]);
+                        }
+                    }
+                } else {
+                    // Move to next day in current week
+                    $nextDay = $currentWeek->days()
+                        ->where('order', '>', $currentDay->order)
+                        ->orderBy('order')
+                        ->first();
+                    
+                    if ($nextDay) {
+                        $program->update([
+                            'current_day_id' => $nextDay->id,
+                            'current_week_id' => $currentWeek->id
+                        ]);
+                        Log::info('Moved to next day', [
+                            'program_id' => $program->id,
+                            'new_day_id' => $nextDay->id,
+                            'new_week_id' => $currentWeek->id
+                        ]);
+                    }
+                }
+            }
+
+            Log::info('Progress log created successfully', ['log_id' => $progressLog->id]);
+
+            return response()->json([
+                'message' => 'Progress log created successfully',
+                'log' => $progressLog
+            ], 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            throw $e;
+        } catch (\Exception $e) {
+            \Log::error('Error creating progress log', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
+            ]);
+            return response()->json([
+                'message' => 'Error creating progress log',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function show(ProgressLog $progressLog)

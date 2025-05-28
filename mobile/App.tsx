@@ -8,6 +8,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import QuestionnaireScreen from './src/screens/QuestionnaireScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import DailyExercisesScreen from './src/screens/DailyExercisesScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -41,7 +42,7 @@ function TabNavigator() {
             })}
         >
             <Tab.Screen name="Home" component={HomeScreen} />
-            <Tab.Screen name="History" component={HomeScreen} />
+            <Tab.Screen name="History" component={HistoryScreen} />
             <Tab.Screen name="Settings" component={SettingsScreen} />
         </Tab.Navigator>
     );

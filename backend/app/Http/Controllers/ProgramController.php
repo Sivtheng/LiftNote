@@ -48,6 +48,18 @@ class ProgramController extends Controller
                     'total_weeks' => $validated['total_weeks']
                 ]);
 
+                // Set initial current week and day
+                $firstWeek = $program->weeks()->orderBy('order')->first();
+                if ($firstWeek) {
+                    $firstDay = $firstWeek->days()->orderBy('order')->first();
+                    if ($firstDay) {
+                        $program->update([
+                            'current_week_id' => $firstWeek->id,
+                            'current_day_id' => $firstDay->id
+                        ]);
+                    }
+                }
+
                 return response()->json([
                     'message' => 'Program created successfully',
                     'program' => $program->load(['coach', 'client'])
@@ -195,7 +207,16 @@ class ProgramController extends Controller
                 ->with([
                     'coach',
                     'client',
-                    'progressLogs',
+                    'current_week' => function($query) {
+                        $query->with(['days' => function($query) {
+                            $query->orderBy('order');
+                        }]);
+                    },
+                    'current_day' => function($query) {
+                        $query->with(['exercises' => function($query) {
+                            $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
+                        }]);
+                    },
                     'weeks' => function($query) {
                         $query->orderBy('order');
                     },
@@ -204,9 +225,29 @@ class ProgramController extends Controller
                     },
                     'weeks.days.exercises' => function($query) {
                         $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
+                    },
+                    'weeks.days.progressLogs' => function($query) {
+                        $query->with('exercise')
+                            ->orderBy('completed_at', 'desc');
                     }
                 ])
                 ->get();
+
+            // Fix any programs that don't have current week/day set
+            foreach ($programs as $program) {
+                if (!$program->current_week_id || !$program->current_day_id) {
+                    $firstWeek = $program->weeks()->orderBy('order')->first();
+                    if ($firstWeek) {
+                        $firstDay = $firstWeek->days()->orderBy('order')->first();
+                        if ($firstDay) {
+                            $program->update([
+                                'current_week_id' => $firstWeek->id,
+                                'current_day_id' => $firstDay->id
+                            ]);
+                        }
+                    }
+                }
+            }
 
             return response()->json([
                 'programs' => $programs

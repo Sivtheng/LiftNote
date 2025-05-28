@@ -18,7 +18,9 @@ class Program extends Model
         'client_id',
         'status',
         'total_weeks',
-        'completed_weeks'
+        'completed_weeks',
+        'current_week_id',
+        'current_day_id'
     ];
 
     protected $casts = [
@@ -61,5 +63,15 @@ class Program extends Model
     public function weeks(): HasMany
     {
         return $this->hasMany(ProgramWeek::class)->orderBy('order');
+    }
+
+    public function current_week(): BelongsTo
+    {
+        return $this->belongsTo(ProgramWeek::class, 'current_week_id');
+    }
+
+    public function current_day(): BelongsTo
+    {
+        return $this->belongsTo(ProgramDay::class, 'current_day_id');
     }
 }

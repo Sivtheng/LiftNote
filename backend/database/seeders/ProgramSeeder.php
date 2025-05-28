@@ -164,5 +164,17 @@ class ProgramSeeder extends Seeder
                 }
             }
         }
+
+        // Set initial current week and day
+        $firstWeek = $program->weeks()->orderBy('order')->first();
+        if ($firstWeek) {
+            $firstDay = $firstWeek->days()->orderBy('order')->first();
+            if ($firstDay) {
+                $program->update([
+                    'current_week_id' => $firstWeek->id,
+                    'current_day_id' => $firstDay->id
+                ]);
+            }
+        }
     }
 } 

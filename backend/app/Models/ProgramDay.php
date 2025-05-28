@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ProgramDay extends Model
 {
@@ -32,5 +33,10 @@ class ProgramDay extends Model
                 'measurement_type',
                 'measurement_value'
             ]);
+    }
+
+    public function progressLogs(): HasMany
+    {
+        return $this->hasMany(ProgressLog::class, 'day_id');
     }
 }

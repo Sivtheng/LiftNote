@@ -20,6 +20,8 @@ return new class extends Migration
             $table->enum('status', ['active', 'completed', 'cancelled'])->default('active');
             $table->integer('total_weeks')->default(12);
             $table->integer('completed_weeks')->default(0);
+            $table->unsignedBigInteger('current_week_id')->nullable();
+            $table->unsignedBigInteger('current_day_id')->nullable();
             $table->timestamps();
         });
     }
