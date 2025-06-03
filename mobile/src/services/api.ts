@@ -1,8 +1,14 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Switch between PCs by changing this boolean
+const USE_PC_1 = false; // Set to false to use PC 2
+
 // Use environment variable or fallback to localhost
-const API_URL = process.env.API_URL || 'http://192.168.43.233:8000/api';
+const API_URL = process.env.API_URL || (USE_PC_1 
+    ? 'http://192.168.43.233:8000/api'  // PC 1
+    : 'http://192.168.43.42:8000/api'   // PC 2
+);
 
 const api = axios.create({
     baseURL: API_URL,
