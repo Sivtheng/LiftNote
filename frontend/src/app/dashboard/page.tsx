@@ -97,6 +97,48 @@ export default function DashboardPage() {
                             {error}
                         </div>
                     )}
+                    {/* Recent Comments Section */}
+                    <div className="mb-8">
+                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">Recent Comments</h2>
+                        <div className="bg-white shadow rounded-lg overflow-hidden">
+                            {recentComments.length > 0 ? (
+                                <div className="divide-y divide-gray-200">
+                                    {recentComments.map((comment) => (
+                                        <div key={comment.id} className="p-4 hover:bg-gray-50">
+                                            <div className="flex items-start space-x-3">
+                                                <div className="flex-shrink-0">
+                                                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                        <span className="text-lg font-medium text-indigo-600">
+                                                            {comment.user.name.charAt(0).toUpperCase()}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center justify-between">
+                                                        <p className="text-sm font-medium text-gray-900">{comment.user.name}</p>
+                                                        <p className="text-sm text-gray-500">
+                                                            {new Date(comment.created_at).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                    <p className="mt-1 text-gray-700">{comment.content}</p>
+                                                    <button
+                                                        onClick={() => router.push(`/client/${comment.program_id}/comments/${comment.program_id}`)}
+                                                        className="mt-2 text-sm text-indigo-600 hover:text-indigo-900"
+                                                    >
+                                                        View Program
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-6 text-center text-gray-500">
+                                    No recent comments
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
                     {/* Client Progress Section */}
                     <div className="mb-8">
@@ -171,49 +213,6 @@ export default function DashboardPage() {
                             ) : (
                                 <div className="p-6 text-center text-gray-500">
                                     No clients found
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Recent Comments Section */}
-                    <div>
-                        <h2 className="text-2xl font-semibold text-gray-900 mb-4">Recent Comments</h2>
-                        <div className="bg-white shadow rounded-lg overflow-hidden">
-                            {recentComments.length > 0 ? (
-                                <div className="divide-y divide-gray-200">
-                                    {recentComments.map((comment) => (
-                                        <div key={comment.id} className="p-4 hover:bg-gray-50">
-                                            <div className="flex items-start space-x-3">
-                                                <div className="flex-shrink-0">
-                                                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                        <span className="text-lg font-medium text-indigo-600">
-                                                            {comment.user.name.charAt(0).toUpperCase()}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center justify-between">
-                                                        <p className="text-sm font-medium text-gray-900">{comment.user.name}</p>
-                                                        <p className="text-sm text-gray-500">
-                                                            {new Date(comment.created_at).toLocaleDateString()}
-                                                        </p>
-                                                    </div>
-                                                    <p className="mt-1 text-gray-700">{comment.content}</p>
-                                                    <button
-                                                        onClick={() => router.push(`/client/${comment.program_id}/comments/${comment.program_id}`)}
-                                                        className="mt-2 text-sm text-indigo-600 hover:text-indigo-900"
-                                                    >
-                                                        View Program
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="p-6 text-center text-gray-500">
-                                    No recent comments
                                 </div>
                             )}
                         </div>
