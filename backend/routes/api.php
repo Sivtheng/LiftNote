@@ -25,6 +25,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::get('/users', [AuthController::class, 'getUsers']);
     Route::get('/users/{user}', [AuthController::class, 'getUser']);
+    Route::post('/users', [AuthController::class, 'createClient']);
+    Route::delete('/users/{user}', [AuthController::class, 'destroy']);
 
     // Questionnaire Routes
     Route::prefix('questionnaires')->group(function () {

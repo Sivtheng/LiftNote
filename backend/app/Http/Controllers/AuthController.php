@@ -501,6 +501,56 @@ class AuthController extends Controller
         }
     }
 
+    public function createClient(Request $request)
+    {
+        try {
+            // Only allow coaches and admins to create clients
+            if (!$request->user()->isCoach() && !$request->user()->isAdmin()) {
+                return response()->json([
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:8',
+                'phone_number' => 'nullable|string|max:20',
+                'bio' => 'nullable|string',
+                'profile_picture' => 'nullable|string',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'client',
+                'phone_number' => $request->phone_number,
+                'bio' => $request->bio,
+                'profile_picture' => $request->profile_picture,
+            ]);
+
+            return response()->json([
+                'message' => 'Client created successfully',
+                'user' => $user
+            ], 201);
+
+        } catch (\Exception $e) {
+            Log::error('Error creating client: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error creating client',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function getUser(Request $request, User $user)
     {
         try {
