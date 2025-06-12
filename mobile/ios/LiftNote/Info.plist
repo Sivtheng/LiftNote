@@ -1,0 +1,11 @@
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>liftnote</string>
+        </array>
+        <key>CFBundleURLName</key>
+        <string>com.liftnote.app</string>
+    </dict>
+</array> 

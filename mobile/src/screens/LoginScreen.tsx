@@ -52,6 +52,33 @@ export default function LoginScreen({ navigation }: any) {
         }
     };
 
+    const handleForgotPassword = async () => {
+        if (!email) {
+            Alert.alert('Error', 'Please enter your email address');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            console.log('Sending password reset request for email:', email);
+            const response = await authService.requestPasswordReset(email);
+            console.log('Password reset response:', response);
+            Alert.alert(
+                'Password Reset',
+                'A password reset link has been sent to your email. Please check your inbox.',
+            );
+        } catch (error: any) {
+            console.error('Password reset error:', error);
+            console.error('Error response:', error.response?.data);
+            Alert.alert(
+                'Error',
+                error.response?.data?.message || 'Failed to send password reset email'
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -88,6 +115,13 @@ export default function LoginScreen({ navigation }: any) {
                         </Text>
                     </TouchableOpacity>
                 </View>
+
+                <TouchableOpacity
+                    style={styles.forgotPasswordButton}
+                    onPress={handleForgotPassword}
+                >
+                    <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity
                     style={[styles.button, loading && styles.buttonDisabled]}
@@ -144,6 +178,14 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     eyeButtonText: {
+        color: '#007AFF',
+        fontSize: 16,
+    },
+    forgotPasswordButton: {
+        alignSelf: 'flex-end',
+        marginBottom: 20,
+    },
+    forgotPasswordText: {
         color: '#007AFF',
         fontSize: 16,
     },

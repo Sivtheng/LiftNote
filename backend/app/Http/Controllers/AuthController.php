@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
@@ -530,6 +533,163 @@ class AuthController extends Controller
             Log::error('Error fetching user: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error fetching user',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Request password reset
+    public function forgotPassword(Request $request)
+    {
+        Log::info('Forgot password request received', ['email' => $request->email]);
+
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        if ($validator->fails()) {
+            Log::error('Validation failed', ['errors' => $validator->errors()]);
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $user = User::where('email', $request->email)->first();
+            Log::info('User found', ['user_id' => $user->id]);
+            
+            // Generate password reset token
+            $token = Str::random(64);
+            Log::info('Token generated', ['token' => $token]);
+            
+            // Store token in password_reset_tokens table
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $user->email],
+                [
+                    'token' => $token,
+                    'created_at' => now()
+                ]
+            );
+            Log::info('Token stored in database');
+
+            // Send password reset email
+            Log::info('Attempting to send email');
+            Mail::send('emails.reset-password', ['token' => $token], function($message) use ($user) {
+                $message->to($user->email);
+                $message->subject('Password Reset Request');
+            });
+            Log::info('Email sent successfully');
+
+            return response()->json([
+                'message' => 'Password reset link sent to your email'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Password reset request error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => 'Error processing password reset request',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Reset password with token
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'token' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $passwordReset = DB::table('password_reset_tokens')
+                ->where('token', $request->token)
+                ->where('created_at', '>', now()->subHours(24))
+                ->first();
+
+            if (!$passwordReset) {
+                return response()->json([
+                    'message' => 'Invalid or expired password reset token'
+                ], 400);
+            }
+
+            $user = User::where('email', $passwordReset->email)->first();
+            
+            if (!$user) {
+                return response()->json([
+                    'message' => 'User not found'
+                ], 404);
+            }
+
+            // Update password
+            $user->password = Hash::make($request->password);
+            $user->save();
+
+            // Delete used token
+            DB::table('password_reset_tokens')->where('token', $request->token)->delete();
+
+            // Delete all existing tokens
+            $user->tokens()->delete();
+
+            return response()->json([
+                'message' => 'Password has been reset successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Password reset error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error resetting password',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Change password for authenticated user
+    public function changePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $user = $request->user();
+
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'message' => 'Current password is incorrect'
+                ], 401);
+            }
+
+            $user->password = Hash::make($request->password);
+            $user->save();
+
+            // Delete all existing tokens to force re-login
+            $user->tokens()->delete();
+
+            return response()->json([
+                'message' => 'Password changed successfully'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Password change error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error changing password',
                 'error' => $e->getMessage()
             ], 500);
         }

@@ -1,14 +1,17 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Switch between PCs by changing this boolean
-const USE_PC_1 = false; // Set to false to use PC 2
+// Network configuration
+const NETWORK = 'home';
 
-// Use environment variable or fallback to localhost
-const API_URL = process.env.API_URL || (USE_PC_1 
-    ? 'http://192.168.43.233:8000/api'  // PC 1
-    : 'http://192.168.43.42:8000/api'   // PC 2
-);
+const NETWORK_CONFIGS = {
+    work: 'http://192.168.43.233:8000/api',
+    school: 'http://10.0.4.97:8000/api',
+    home: 'http://192.168.0.101:8000/api'
+};
+
+// Use environment variable or fallback to network config
+const API_URL = process.env.API_URL || NETWORK_CONFIGS[NETWORK];
 
 const api = axios.create({
     baseURL: API_URL,
@@ -87,6 +90,59 @@ export const authService = {
             return response.data;
         } catch (error) {
             console.error('Get profile error:', error);
+            throw error;
+        }
+    },
+    updateProfile: async (userData: any) => {
+        try {
+            const response = await api.put('/profile', userData);
+            return response.data;
+        } catch (error) {
+            console.error('Update profile error:', error);
+            throw error;
+        }
+    },
+    deleteAccount: async () => {
+        try {
+            await api.delete('/profile');
+            await AsyncStorage.removeItem('token');
+        } catch (error) {
+            console.error('Delete account error:', error);
+            throw error;
+        }
+    },
+    requestPasswordReset: async (email: string) => {
+        try {
+            const response = await api.post('/forgot-password', { email });
+            return response.data;
+        } catch (error) {
+            console.error('Password reset request error:', error);
+            throw error;
+        }
+    },
+    resetPassword: async (token: string, password: string, passwordConfirmation: string) => {
+        try {
+            const response = await api.post('/reset-password', {
+                token,
+                password,
+                password_confirmation: passwordConfirmation
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Password reset error:', error);
+            throw error;
+        }
+    },
+    changePassword: async (currentPassword: string, newPassword: string, passwordConfirmation: string) => {
+        try {
+            const response = await api.post('/change-password', {
+                current_password: currentPassword,
+                password: newPassword,
+                password_confirmation: passwordConfirmation
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Change password error:', error);
             throw error;
         }
     },

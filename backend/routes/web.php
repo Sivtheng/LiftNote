@@ -7,6 +7,7 @@ use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\ProgressLogController;
 use App\Http\Controllers\QuestionnaireController;
 use App\Http\Controllers\CommentController;
+use Illuminate\Http\Request;
 
 require __DIR__.'/api.php';
 
@@ -75,3 +76,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 Route::get('/', function () {
     return redirect()->route('admin.login');
 });
+
+Route::get('/reset-password', function (Request $request) {
+    $token = $request->query('token');
+    if (!$token) {
+        return redirect()->route('login')->with('error', 'Invalid password reset link.');
+    }
+    
+    return view('auth.reset-password', ['token' => $token]);
+})->name('password.reset');
