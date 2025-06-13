@@ -224,7 +224,7 @@ export default function CreateProgramPage() {
                                     min="1"
                                     max="52"
                                     value={formData.total_weeks}
-                                    onChange={(e) => setFormData({ ...formData, total_weeks: parseInt(e.target.value) })}
+                                    onChange={(e) => setFormData({ ...formData, total_weeks: e.target.value === '' ? 0 : parseInt(e.target.value) })}
                                     className="block w-full px-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 text-lg"
                                     required
                                 />
