@@ -1,8 +1,8 @@
 export interface User {
-    id: number;
+    id: string;
     name: string;
     email: string;
-    role: 'client' | 'coach' | 'admin';
+    role: 'admin' | 'coach' | 'client';
 }
 
 export interface Program {
@@ -53,10 +53,10 @@ export interface ProgressLog {
 }
 
 export interface Comment {
-    id: number;
-    user_id: number;
+    id: string;
     content: string;
+    user: User;
     created_at: string;
     updated_at: string;
-    user: User;
+    replies?: Comment[];
 } 

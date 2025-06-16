@@ -219,7 +219,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                                                 {/* View Comments Button */}
                                                 <div className="mt-6">
                                                     <button
-                                                        onClick={() => router.push(`/client/${id}/comments/${program.id}`)}
+                                                        onClick={() => router.push(`/client/${program.client_id}/comments/${program.id}`)}
                                                         className="w-full inline-flex justify-center items-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
                                                     >
                                                         View Comments

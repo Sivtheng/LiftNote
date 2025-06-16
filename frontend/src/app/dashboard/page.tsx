@@ -117,12 +117,12 @@ export default function DashboardPage() {
                                                     <div className="flex items-center justify-between">
                                                         <p className="text-sm font-medium text-gray-900">{comment.user.name}</p>
                                                         <p className="text-sm text-gray-500">
-                                                            {new Date(comment.created_at).toLocaleDateString()}
+                                                            {new Date(comment.created_at).toLocaleString()}
                                                         </p>
                                                     </div>
                                                     <p className="mt-1 text-gray-700">{comment.content}</p>
                                                     <button
-                                                        onClick={() => router.push(`/client/${comment.program_id}/comments/${comment.program_id}`)}
+                                                        onClick={() => router.push(`/client/${comment.program.client_id}/comments/${comment.program_id}`)}
                                                         className="mt-2 text-sm text-indigo-600 hover:text-indigo-900"
                                                     >
                                                         View Program

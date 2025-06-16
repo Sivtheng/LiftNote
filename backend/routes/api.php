@@ -163,10 +163,10 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Comment routes
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::get('/comments/recent', [CommentController::class, 'getRecentComments']);
+Route::middleware('auth:sanctum')->group(function () {
     Route::get('/programs/{program}/comments', [CommentController::class, 'index']);
     Route::post('/programs/{program}/comments', [CommentController::class, 'store']);
+    Route::get('/comments/recent', [CommentController::class, 'recent']);
     Route::put('/comments/{comment}', [CommentController::class, 'update']);
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
 });

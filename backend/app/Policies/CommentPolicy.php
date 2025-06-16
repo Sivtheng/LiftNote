@@ -10,13 +10,13 @@ class CommentPolicy
 {
     use HandlesAuthorization;
 
-    public function update(User $user, Comment $comment)
+    public function update(User $user, Comment $comment): bool
     {
-        return $user->id === $comment->user_id;
+        return $user->id === $comment->user_id || $user->role === 'admin' || $user->role === 'coach';
     }
 
-    public function delete(User $user, Comment $comment)
+    public function delete(User $user, Comment $comment): bool
     {
-        return $user->id === $comment->user_id || $user->isCoach();
+        return $user->id === $comment->user_id || $user->role === 'admin' || $user->role === 'coach';
     }
 } 

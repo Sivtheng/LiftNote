@@ -8,41 +8,45 @@ use App\Models\Comment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\Rule;
 
 class CommentController extends Controller
 {
-    public function index($programId)
+    public function index(Program $program)
     {
-        $comments = Comment::where('program_id', $programId)
-            ->whereNull('parent_id')
+        $comments = $program->comments()
             ->with(['user', 'replies.user'])
-            ->orderBy('created_at', 'desc')
+            ->whereNull('parent_id')
+            ->latest()
             ->get();
 
-        return response()->json(['comments' => $comments]);
+        return response()->json([
+            'comments' => $comments
+        ]);
     }
 
-    public function store(Request $request, $programId)
+    public function store(Request $request, Program $program)
     {
-        $request->validate([
-            'content' => 'required|string',
-            'media_type' => 'nullable|in:text,video,image',
-            'media_url' => 'nullable|url',
+        $validated = $request->validate([
+            'content' => 'required|string|max:1000',
+            'media_type' => ['nullable', Rule::in(['text', 'image', 'video'])],
+            'media_url' => 'nullable|url|max:255',
             'parent_id' => 'nullable|exists:comments,id'
         ]);
 
-        $comment = Comment::create([
-            'content' => $request->content,
-            'media_type' => $request->media_type ?? 'text',
-            'media_url' => $request->media_url,
-            'user_id' => auth()->id(),
-            'program_id' => $programId,
-            'parent_id' => $request->parent_id
+        $comment = $program->comments()->create([
+            'content' => $validated['content'],
+            'media_type' => $validated['media_type'] ?? 'text',
+            'media_url' => $validated['media_url'] ?? null,
+            'parent_id' => $validated['parent_id'] ?? null,
+            'user_id' => Auth::id()
         ]);
+
+        $comment->load('user');
 
         return response()->json([
             'message' => 'Comment created successfully',
-            'comment' => $comment->load(['user', 'replies.user'])
+            'comment' => $comment
         ], 201);
     }
 
@@ -50,21 +54,18 @@ class CommentController extends Controller
     {
         $this->authorize('update', $comment);
 
-        $request->validate([
-            'content' => 'required|string',
-            'media_type' => 'nullable|in:text,video,image',
-            'media_url' => 'nullable|url|required_if:media_type,video,image'
+        $validated = $request->validate([
+            'content' => 'required|string|max:1000',
+            'media_type' => ['nullable', Rule::in(['text', 'image', 'video'])],
+            'media_url' => 'nullable|url|max:255'
         ]);
 
-        $comment->update([
-            'content' => $request->content,
-            'media_type' => $request->media_type ?? 'text',
-            'media_url' => $request->media_url
+        $comment->update($validated);
+
+        return response()->json([
+            'message' => 'Comment updated successfully',
+            'comment' => $comment
         ]);
-
-        $comment->load('user');
-
-        return response()->json(['comment' => $comment]);
     }
 
     public function destroy(Comment $comment)
@@ -73,7 +74,9 @@ class CommentController extends Controller
 
         $comment->delete();
 
-        return response()->json(null, 204);
+        return response()->json([
+            'message' => 'Comment deleted successfully'
+        ]);
     }
 
     // Add comment to a program
@@ -365,5 +368,23 @@ class CommentController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function recent()
+    {
+        $comments = Comment::with(['user', 'program' => function($query) {
+                $query->select('id', 'client_id', 'title');
+            }])
+            ->whereHas('user', function ($query) {
+                $query->where('role', 'client');
+            })
+            ->whereNotNull('program_id')
+            ->orderBy('created_at', 'desc')
+            ->take(5)
+            ->get();
+
+        return response()->json([
+            'comments' => $comments
+        ]);
     }
 }

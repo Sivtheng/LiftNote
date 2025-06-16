@@ -9,6 +9,7 @@ import QuestionnaireScreen from './src/screens/QuestionnaireScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import DailyExercisesScreen from './src/screens/DailyExercisesScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
+import CommentsScreen from './src/screens/CommentsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -17,6 +18,7 @@ type TabParamList = {
     Home: undefined;
     History: undefined;
     Settings: undefined;
+    Comments: undefined;
 };
 
 function TabNavigator() {
@@ -30,6 +32,8 @@ function TabNavigator() {
                         iconName = focused ? 'home' : 'home-outline';
                     } else if (route.name === 'History') {
                         iconName = focused ? 'time' : 'time-outline';
+                    } else if (route.name === 'Comments') {
+                        iconName = focused ? 'chatbubble' : 'chatbubble-outline';
                     } else {
                         iconName = focused ? 'settings' : 'settings-outline';
                     }
@@ -43,6 +47,7 @@ function TabNavigator() {
         >
             <Tab.Screen name="Home" component={HomeScreen} />
             <Tab.Screen name="History" component={HistoryScreen} />
+            <Tab.Screen name="Comments" component={CommentsScreen} />
             <Tab.Screen name="Settings" component={SettingsScreen} />
         </Tab.Navigator>
     );

@@ -22,6 +22,7 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
         parent_id: null as number | null
     });
     const [replyingTo, setReplyingTo] = useState<number | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { id, programId } = use(params);
 
@@ -87,6 +88,9 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
         if (!newComment.content.trim()) return;
 
         try {
+            setIsSubmitting(true);
+            setError('');
+
             const token = localStorage.getItem('token');
             if (!token) {
                 throw new Error('No authentication token found');
@@ -108,7 +112,23 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
             }
 
             const data = await response.json();
-            setComments(prev => [...prev, data.comment]);
+            
+            if (newComment.parent_id) {
+                // If it's a reply, update the parent comment's replies
+                setComments((prev: Comment[]) => prev.map((comment: Comment) => {
+                    if (comment.id === newComment.parent_id) {
+                        return {
+                            ...comment,
+                            replies: [...(comment.replies || []), data.comment]
+                        };
+                    }
+                    return comment;
+                }));
+            } else {
+                // If it's a new comment, add it to the top
+                setComments((prev: Comment[]) => [data.comment, ...prev]);
+            }
+
             setNewComment({
                 content: '',
                 media_type: 'text',
@@ -119,14 +139,24 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
         } catch (error) {
             console.error('Error posting comment:', error);
             setError(error instanceof Error ? error.message : 'Failed to post comment');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleReply = (commentId: number) => {
         setReplyingTo(commentId);
-        setNewComment(prev => ({
+        setNewComment((prev) => ({
             ...prev,
             parent_id: commentId
+        }));
+    };
+
+    const handleCancelReply = () => {
+        setReplyingTo(null);
+        setNewComment((prev) => ({
+            ...prev,
+            parent_id: null
         }));
     };
 
@@ -142,10 +172,21 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-gray-900">{comment.user.name}</p>
-                        <p className="text-sm text-gray-500">
-                            {new Date(comment.created_at).toLocaleDateString()}
-                        </p>
+                        <div className="flex items-center space-x-2">
+                            <p className="text-sm font-medium text-gray-900">{comment.user.name}</p>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                                comment.user.role === 'coach' ? 'bg-blue-100 text-blue-800' :
+                                comment.user.role === 'admin' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'
+                            }`}>
+                                {comment.user.role}
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500">
+                                {new Date(comment.created_at).toLocaleString()}
+                            </span>
+                        </div>
                     </div>
                     <p className="mt-1 text-gray-700">{comment.content}</p>
                     {comment.media_url && (
@@ -224,6 +265,18 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                     {/* Comment Form */}
                     <form onSubmit={handleSubmitComment} className="mb-8">
                         <div className="bg-white rounded-lg shadow p-4 text-black">
+                            {replyingTo && (
+                                <div className="mb-4 p-2 bg-gray-50 rounded-md flex justify-between items-center">
+                                    <span className="text-sm text-gray-600">Replying to a comment</span>
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelReply}
+                                        className="text-sm text-gray-500 hover:text-gray-700"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            )}
                             <textarea
                                 value={newComment.content}
                                 onChange={(e) => setNewComment(prev => ({ ...prev, content: e.target.value }))}
@@ -266,9 +319,12 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                                 </div>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                    disabled={isSubmitting}
+                                    className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                                        isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                                    }`}
                                 >
-                                    {replyingTo ? 'Reply' : 'Comment'}
+                                    {isSubmitting ? 'Posting...' : replyingTo ? 'Reply' : 'Comment'}
                                 </button>
                             </div>
                             {newComment.media_type !== 'text' && (
@@ -287,7 +343,13 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
 
                     {/* Comments List */}
                     <div className="space-y-4">
-                        {comments.map(comment => renderComment(comment))}
+                        {comments.length > 0 ? (
+                            comments.map(comment => renderComment(comment))
+                        ) : (
+                            <div className="text-center py-8 bg-white rounded-lg shadow">
+                                <p className="text-gray-500">No comments yet. Be the first to comment!</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

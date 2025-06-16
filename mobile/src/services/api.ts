@@ -2,10 +2,10 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Network configuration
-const NETWORK = 'home';
+const NETWORK = 'work';
 
 const NETWORK_CONFIGS = {
-    work: 'http://192.168.43.233:8000/api',
+    work: 'http://192.168.43.42:8000/api',
     school: 'http://10.0.4.97:8000/api',
     home: 'http://192.168.0.101:8000/api'
 };
@@ -194,8 +194,11 @@ export const commentService = {
         const response = await api.get(`/programs/${programId}/comments`);
         return response.data;
     },
-    addProgramComment: async (programId: string, comment: string) => {
-        const response = await api.post(`/programs/${programId}/comments`, { comment });
+    addProgramComment: async (programId: string, content: string, parentId?: string) => {
+        const response = await api.post(`/programs/${programId}/comments`, {
+            content,
+            parent_id: parentId
+        });
         return response.data;
     },
     getRecentComments: async (programId: string) => {

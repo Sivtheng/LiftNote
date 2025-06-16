@@ -34,9 +34,9 @@ class Program extends Model
         return $this->belongsTo(User::class, 'coach_id');
     }
 
-    public function client(): BelongsTo
+    public function client()
     {
-        return $this->belongsTo(User::class, 'client_id')->where('role', 'client');
+        return $this->belongsTo(User::class, 'client_id');
     }
 
     public function progressLogs(): HasMany

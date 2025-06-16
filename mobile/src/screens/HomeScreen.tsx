@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 type RootStackParamList = {
     DailyExercises: undefined;
+    Comments: { programId: string; programTitle: string };
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -36,6 +37,7 @@ export default function HomeScreen() {
     const [recentComments, setRecentComments] = useState<TransformedComment[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [currentProgram, setCurrentProgram] = useState<any>(null);
     const navigation = useNavigation<NavigationProp>();
 
     useFocusEffect(
@@ -54,23 +56,24 @@ export default function HomeScreen() {
             }
 
             // Get the first program from the array
-            const currentProgram = programData.programs[0];
+            const program = programData.programs[0];
+            setCurrentProgram(program);
             
             // Calculate completion percentage
-            const completion = currentProgram.completed_weeks 
-                ? Math.round((currentProgram.completed_weeks / currentProgram.total_weeks) * 100)
+            const completion = program.completed_weeks 
+                ? Math.round((program.completed_weeks / program.total_weeks) * 100)
                 : 0;
 
             // Set client name from the program's client data
-            setClientName(currentProgram.client?.name || 'Guest');
+            setClientName(program.client?.name || 'Guest');
             
             // Get current week and day from the program
-            const currentWeek = currentProgram.current_week;
-            const currentDay = currentProgram.current_day;
+            const currentWeek = program.current_week;
+            const currentDay = program.current_day;
             
             // If we have a current day but no current week, something is wrong
             if (currentDay && !currentWeek) {
-                console.error('Program has current day but no current week:', currentProgram);
+                console.error('Program has current day but no current week:', program);
                 setCurrentWeek('Error: No Week Assigned');
                 setCurrentDay(`Day ${currentDay.order}`);
             } else {
@@ -78,11 +81,11 @@ export default function HomeScreen() {
                 setCurrentDay(currentDay ? `Day ${currentDay.order}` : 'No Day Assigned');
             }
             
-            setProgramName(currentProgram.title || 'No Program Assigned');
+            setProgramName(program.title || 'No Program Assigned');
             setCompletionPercentage(completion);
 
             // Fetch comments for this program
-            const commentsData = await commentService.getRecentComments(currentProgram.id.toString());
+            const commentsData = await commentService.getRecentComments(program.id.toString());
 
             // Transform comments data to match our expected format
             if (commentsData && commentsData.comments) {
@@ -162,7 +165,18 @@ export default function HomeScreen() {
                 </View>
 
                 <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Recent Comments</Text>
+                    <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>Recent Comments</Text>
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('Comments', {
+                                programId: currentProgram?.id.toString(),
+                                programTitle: programName
+                            })}
+                            style={styles.viewAllButton}
+                        >
+                            <Text style={styles.viewAllButtonText}>View All</Text>
+                        </TouchableOpacity>
+                    </View>
                     {recentComments && recentComments.length > 0 ? (
                         recentComments.map((comment, index) => (
                             <View key={index} style={styles.commentContainer}>
@@ -316,5 +330,19 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    cardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    viewAllButton: {
+        padding: 5,
+    },
+    viewAllButtonText: {
+        color: '#007AFF',
+        fontSize: 14,
+        fontWeight: '600',
     },
 }); 
