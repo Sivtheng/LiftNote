@@ -8,6 +8,7 @@ use App\Http\Controllers\ProgressLogController;
 use App\Http\Controllers\QuestionnaireController;
 use App\Http\Controllers\CommentController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 require __DIR__.'/api.php';
 
@@ -85,3 +86,43 @@ Route::get('/reset-password', function (Request $request) {
     
     return view('auth.reset-password', ['token' => $token]);
 })->name('password.reset');
+
+// Test route for Spaces
+Route::get('/test-spaces', function () {
+    try {
+        // Create a test file
+        $testContent = 'This is a test file for DigitalOcean Spaces.';
+        $testPath = 'public/test-' . time() . '.txt';
+        
+        // Upload to Spaces with public visibility
+        $result = Storage::disk('spaces')->put($testPath, $testContent, [
+            'visibility' => 'public',
+            'ACL' => 'public-read',
+            'CacheControl' => 'max-age=31536000',
+            'ContentType' => 'text/plain'
+        ]);
+        
+        // Make the file publicly accessible
+        Storage::disk('spaces')->setVisibility($testPath, 'public');
+        
+        // Get the URL
+        $url = Storage::disk('spaces')->url($testPath);
+        
+        // List files in the bucket to verify
+        $files = Storage::disk('spaces')->files('public');
+        
+        return [
+            'success' => true,
+            'message' => 'File uploaded successfully',
+            'url' => $url,
+            'files_in_bucket' => $files,
+            'upload_result' => $result
+        ];
+    } catch (\Exception $e) {
+        return [
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ];
+    }
+});
