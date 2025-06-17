@@ -9,9 +9,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\Rule;
+use App\Services\SpacesService;
+use Illuminate\Support\Str;
 
 class CommentController extends Controller
 {
+    protected $spacesService;
+
+    public function __construct(SpacesService $spacesService)
+    {
+        $this->spacesService = $spacesService;
+    }
+
     public function index(Program $program)
     {
         $comments = $program->comments()
@@ -30,14 +39,21 @@ class CommentController extends Controller
         $validated = $request->validate([
             'content' => 'required|string|max:1000',
             'media_type' => ['nullable', Rule::in(['text', 'image', 'video'])],
-            'media_url' => 'nullable|url|max:255',
+            'media_file' => 'nullable|file|mimes:jpeg,png,jpg,gif,mp4,mov,avi|max:10240', // 10MB max
             'parent_id' => 'nullable|exists:comments,id'
         ]);
 
+        $mediaUrl = null;
+        if ($request->hasFile('media_file')) {
+            $file = $request->file('media_file');
+            $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
+            $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
+        }
+
         $comment = $program->comments()->create([
             'content' => $validated['content'],
-            'media_type' => $validated['media_type'] ?? 'text',
-            'media_url' => $validated['media_url'] ?? null,
+            'media_type' => $mediaUrl ? ($mediaType ?? 'text') : 'text',
+            'media_url' => $mediaUrl,
             'parent_id' => $validated['parent_id'] ?? null,
             'user_id' => Auth::id()
         ]);
@@ -56,11 +72,26 @@ class CommentController extends Controller
 
         $validated = $request->validate([
             'content' => 'required|string|max:1000',
-            'media_type' => ['nullable', Rule::in(['text', 'image', 'video'])],
-            'media_url' => 'nullable|url|max:255'
+            'media_file' => 'nullable|file|mimes:jpeg,png,jpg,gif,mp4,mov,avi|max:10240', // 10MB max
         ]);
 
-        $comment->update($validated);
+        $mediaUrl = $comment->media_url;
+        if ($request->hasFile('media_file')) {
+            // Delete old file if exists
+            if ($mediaUrl) {
+                $this->spacesService->deleteFile($mediaUrl);
+            }
+
+            $file = $request->file('media_file');
+            $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
+            $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
+        }
+
+        $comment->update([
+            'content' => $validated['content'],
+            'media_type' => $mediaUrl ? ($mediaType ?? 'text') : 'text',
+            'media_url' => $mediaUrl
+        ]);
 
         return response()->json([
             'message' => 'Comment updated successfully',
@@ -71,6 +102,11 @@ class CommentController extends Controller
     public function destroy(Comment $comment)
     {
         $this->authorize('delete', $comment);
+
+        // Delete associated file if exists
+        if ($comment->media_url) {
+            $this->spacesService->deleteFile($comment->media_url);
+        }
 
         $comment->delete();
 

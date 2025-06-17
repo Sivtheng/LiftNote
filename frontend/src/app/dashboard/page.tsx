@@ -125,7 +125,7 @@ export default function DashboardPage() {
                                                         onClick={() => router.push(`/client/${comment.program.client_id}/comments/${comment.program_id}`)}
                                                         className="mt-2 text-sm text-indigo-600 hover:text-indigo-900"
                                                     >
-                                                        View Program
+                                                        View Comment Thread
                                                     </button>
                                                 </div>
                                             </div>

@@ -21,6 +21,8 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
         media_url: '',
         parent_id: null as number | null
     });
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [replyingTo, setReplyingTo] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -83,9 +85,51 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
         }
     }, [isAuthenticated, programId]);
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file size (10MB max)
+        if (file.size > 10 * 1024 * 1024) {
+            setError('File size must be less than 10MB');
+            return;
+        }
+
+        // Validate file type
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        if (!isImage && !isVideo) {
+            setError('Only image and video files are allowed');
+            return;
+        }
+
+        setSelectedFile(file);
+        setNewComment(prev => ({
+            ...prev,
+            media_type: isImage ? 'image' : 'video'
+        }));
+
+        // Create preview URL
+        const url = URL.createObjectURL(file);
+        setPreviewUrl(url);
+    };
+
+    const handleRemoveFile = () => {
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+        }
+        setSelectedFile(null);
+        setPreviewUrl(null);
+        setNewComment(prev => ({
+            ...prev,
+            media_type: 'text',
+            media_url: ''
+        }));
+    };
+
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newComment.content.trim()) return;
+        if (!newComment.content.trim() && !selectedFile) return;
 
         try {
             setIsSubmitting(true);
@@ -96,15 +140,23 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 throw new Error('No authentication token found');
             }
 
+            const formData = new FormData();
+            formData.append('content', newComment.content);
+            if (selectedFile) {
+                formData.append('media_file', selectedFile);
+            }
+            if (newComment.parent_id) {
+                formData.append('parent_id', newComment.parent_id.toString());
+            }
+
             const response = await fetch(`${API_URL}/programs/${programId}/comments`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(newComment)
+                body: formData
             });
 
             if (!response.ok) {
@@ -114,7 +166,6 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
             const data = await response.json();
             
             if (newComment.parent_id) {
-                // If it's a reply, update the parent comment's replies
                 setComments((prev: Comment[]) => prev.map((comment: Comment) => {
                     if (comment.id === newComment.parent_id) {
                         return {
@@ -125,7 +176,6 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                     return comment;
                 }));
             } else {
-                // If it's a new comment, add it to the top
                 setComments((prev: Comment[]) => [data.comment, ...prev]);
             }
 
@@ -135,6 +185,11 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 media_url: '',
                 parent_id: null
             });
+            setSelectedFile(null);
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+            }
+            setPreviewUrl(null);
             setReplyingTo(null);
         } catch (error) {
             console.error('Error posting comment:', error);
@@ -263,81 +318,87 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                     <h2 className="text-2xl font-bold text-black mb-6">Comments</h2>
                     
                     {/* Comment Form */}
-                    <form onSubmit={handleSubmitComment} className="mb-8">
-                        <div className="bg-white rounded-lg shadow p-4 text-black">
-                            {replyingTo && (
-                                <div className="mb-4 p-2 bg-gray-50 rounded-md flex justify-between items-center">
-                                    <span className="text-sm text-gray-600">Replying to a comment</span>
-                                    <button
-                                        type="button"
-                                        onClick={handleCancelReply}
-                                        className="text-sm text-gray-500 hover:text-gray-700"
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
-                            )}
+                    <form onSubmit={handleSubmitComment} className="bg-white rounded-lg shadow p-4 mb-8 text-black">
+                        <div className="mb-4">
                             <textarea
                                 value={newComment.content}
                                 onChange={(e) => setNewComment(prev => ({ ...prev, content: e.target.value }))}
-                                placeholder={replyingTo ? "Write a reply..." : "Write a comment..."}
+                                placeholder="Write a comment..."
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 rows={3}
                             />
-                            <div className="mt-4 flex justify-between items-center">
-                                <div className="flex space-x-4">
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            value="text"
-                                            checked={newComment.media_type === 'text'}
-                                            onChange={(e) => setNewComment(prev => ({ ...prev, media_type: e.target.value as 'text' | 'video' | 'image' }))}
-                                            className="form-radio text-indigo-600"
-                                        />
-                                        <span className="ml-2">Text</span>
-                                    </label>
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            value="image"
-                                            checked={newComment.media_type === 'image'}
-                                            onChange={(e) => setNewComment(prev => ({ ...prev, media_type: e.target.value as 'text' | 'video' | 'image' }))}
-                                            className="form-radio text-indigo-600"
-                                        />
-                                        <span className="ml-2">Image</span>
-                                    </label>
-                                    <label className="inline-flex items-center">
-                                        <input
-                                            type="radio"
-                                            value="video"
-                                            checked={newComment.media_type === 'video'}
-                                            onChange={(e) => setNewComment(prev => ({ ...prev, media_type: e.target.value as 'text' | 'video' | 'image' }))}
-                                            className="form-radio text-indigo-600"
-                                        />
-                                        <span className="ml-2">Video</span>
-                                    </label>
-                                </div>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                                        isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
-                                    }`}
-                                >
-                                    {isSubmitting ? 'Posting...' : replyingTo ? 'Reply' : 'Comment'}
-                                </button>
-                            </div>
-                            {newComment.media_type !== 'text' && (
-                                <div className="mt-4">
+                        </div>
+                        
+                        {/* File Upload */}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Add Media (Optional)
+                            </label>
+                            <div className="flex items-center space-x-4">
+                                <label className="cursor-pointer bg-white px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Choose File
                                     <input
-                                        type="text"
-                                        value={newComment.media_url}
-                                        onChange={(e) => setNewComment(prev => ({ ...prev, media_url: e.target.value }))}
-                                        placeholder={`Enter ${newComment.media_type} URL`}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        type="file"
+                                        className="hidden"
+                                        accept="image/*,video/*"
+                                        onChange={handleFileChange}
                                     />
-                                </div>
+                                </label>
+                                {selectedFile && (
+                                    <button
+                                        type="button"
+                                        onClick={handleRemoveFile}
+                                        className="text-sm text-red-600 hover:text-red-800"
+                                    >
+                                        Remove
+                                    </button>
+                                )}
+                            </div>
+                            {selectedFile && (
+                                <p className="mt-2 text-sm text-gray-500">
+                                    Selected: {selectedFile.name}
+                                </p>
                             )}
+                        </div>
+
+                        {/* Preview */}
+                        {previewUrl && (
+                            <div className="mb-4">
+                                {newComment.media_type === 'image' ? (
+                                    <img
+                                        src={previewUrl}
+                                        alt="Preview"
+                                        className="max-h-48 rounded-lg"
+                                    />
+                                ) : (
+                                    <video
+                                        src={previewUrl}
+                                        controls
+                                        className="max-h-48 rounded-lg"
+                                    />
+                                )}
+                            </div>
+                        )}
+
+                        <div className="flex justify-between items-center">
+                            {replyingTo ? (
+                                <button
+                                    type="button"
+                                    onClick={handleCancelReply}
+                                    className="text-sm text-gray-600 hover:text-gray-800"
+                                >
+                                    Cancel Reply
+                                </button>
+                            ) : (
+                                <div />
+                            )}
+                            <button
+                                type="submit"
+                                disabled={isSubmitting || (!newComment.content.trim() && !selectedFile)}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                            >
+                                {isSubmitting ? 'Posting...' : replyingTo ? 'Reply' : 'Post Comment'}
+                            </button>
                         </div>
                     </form>
 
