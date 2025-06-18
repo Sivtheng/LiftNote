@@ -15,6 +15,7 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
     const [comments, setComments] = useState<Comment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string>('');
+    const [currentUser, setCurrentUser] = useState<any>(null);
     const [newComment, setNewComment] = useState({
         content: '',
         media_type: 'text' as 'text' | 'video' | 'image',
@@ -25,6 +26,8 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [replyingTo, setReplyingTo] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [editingComment, setEditingComment] = useState<number | null>(null);
+    const [editContent, setEditContent] = useState<string>('');
 
     const { id, programId } = use(params);
 
@@ -39,14 +42,27 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                     throw new Error('No authentication token found');
                 }
 
+                // Fetch current user profile
+                const userResponse = await fetch(`${API_URL}/profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    setCurrentUser(userData.user);
+                }
+
                 // Fetch program details
                 const programResponse = await fetch(`${API_URL}/programs/${programId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'include'
+                    }
                 });
 
                 if (!programResponse.ok) {
@@ -62,8 +78,7 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                         'Authorization': `Bearer ${token}`,
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'include'
+                    }
                 });
 
                 if (!commentsResponse.ok) {
@@ -127,6 +142,22 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
         }));
     };
 
+    const updateCommentReplies = (comments: Comment[], parentId: number, updatedParentComment: Comment): Comment[] => {
+        return comments.map(comment => {
+            if (comment.id === parentId) {
+                // Replace the parent comment with the updated one that has all replies loaded
+                return updatedParentComment;
+            }
+            if (comment.replies && comment.replies.length > 0) {
+                return {
+                    ...comment,
+                    replies: updateCommentReplies(comment.replies, parentId, updatedParentComment)
+                };
+            }
+            return comment;
+        });
+    };
+
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newComment.content.trim() && !selectedFile) return;
@@ -140,6 +171,13 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 throw new Error('No authentication token found');
             }
 
+            console.log('Submitting comment:', {
+                content: newComment.content,
+                hasFile: !!selectedFile,
+                parent_id: newComment.parent_id,
+                programId: programId
+            });
+
             const formData = new FormData();
             formData.append('content', newComment.content);
             if (selectedFile) {
@@ -149,7 +187,10 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 formData.append('parent_id', newComment.parent_id.toString());
             }
 
-            const response = await fetch(`${API_URL}/programs/${programId}/comments`, {
+            const url = `${API_URL}/programs/${programId}/comments`;
+            console.log('Making request to:', url);
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
@@ -159,22 +200,20 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 body: formData
             });
 
+            console.log('Response status:', response.status);
+            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
             if (!response.ok) {
-                throw new Error('Failed to post comment');
+                const errorText = await response.text();
+                console.error('Response error:', errorText);
+                throw new Error(`Failed to post comment: ${response.status} ${response.statusText}`);
             }
 
             const data = await response.json();
+            console.log('Response data:', data);
             
             if (newComment.parent_id) {
-                setComments((prev: Comment[]) => prev.map((comment: Comment) => {
-                    if (comment.id === newComment.parent_id) {
-                        return {
-                            ...comment,
-                            replies: [...(comment.replies || []), data.comment]
-                        };
-                    }
-                    return comment;
-                }));
+                setComments((prev: Comment[]) => updateCommentReplies(prev, newComment.parent_id!, data.comment));
             } else {
                 setComments((prev: Comment[]) => [data.comment, ...prev]);
             }
@@ -215,6 +254,144 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
         }));
     };
 
+    const canDeleteComment = (comment: Comment): boolean => {
+        if (!currentUser) return false;
+        
+        // Admin can delete any comment
+        if (currentUser.role === 'admin') return true;
+        
+        // User can delete their own comment
+        if (currentUser.id === comment.user_id) return true;
+        
+        return false;
+    };
+
+    const canEditComment = (comment: Comment): boolean => {
+        if (!currentUser) return false;
+        
+        // Only text comments can be edited
+        if (comment.media_type !== 'text') return false;
+        
+        // Admin can edit any text comment
+        if (currentUser.role === 'admin') return true;
+        
+        // User can edit their own text comment
+        if (currentUser.id === comment.user_id) return true;
+        
+        return false;
+    };
+
+    const handleDeleteComment = async (commentId: number) => {
+        if (!confirm('Are you sure you want to delete this comment?')) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            const response = await fetch(`${API_URL}/programs/${programId}/comments/${commentId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to delete comment: ${response.status} ${response.statusText}`);
+            }
+
+            // Remove comment from state
+            const removeCommentFromState = (comments: Comment[], targetId: number): Comment[] => {
+                return comments.filter(comment => {
+                    if (comment.id === targetId) {
+                        return false;
+                    }
+                    if (comment.replies && comment.replies.length > 0) {
+                        comment.replies = removeCommentFromState(comment.replies, targetId);
+                    }
+                    return true;
+                });
+            };
+
+            setComments(prev => removeCommentFromState(prev, commentId));
+        } catch (error) {
+            console.error('Error deleting comment:', error);
+            setError(error instanceof Error ? error.message : 'Failed to delete comment');
+        }
+    };
+
+    const handleStartEdit = (comment: Comment) => {
+        setEditingComment(comment.id);
+        setEditContent(comment.content);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingComment(null);
+        setEditContent('');
+    };
+
+    const handleSaveEdit = async (commentId: number) => {
+        if (!editContent.trim()) return;
+
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            const response = await fetch(`${API_URL}/programs/${programId}/comments/${commentId}`, {
+                method: 'PUT',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    content: editContent
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to update comment: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            // Update comment in state
+            const updateCommentInState = (comments: Comment[], targetId: number, updatedComment: Comment): Comment[] => {
+                return comments.map(comment => {
+                    if (comment.id === targetId) {
+                        return {
+                            ...comment,
+                            content: updatedComment.content,
+                            updated_at: updatedComment.updated_at
+                        };
+                    }
+                    if (comment.replies && comment.replies.length > 0) {
+                        return {
+                            ...comment,
+                            replies: updateCommentInState(comment.replies, targetId, updatedComment)
+                        };
+                    }
+                    return comment;
+                });
+            };
+
+            setComments(prev => updateCommentInState(prev, commentId, data.comment));
+            setEditingComment(null);
+            setEditContent('');
+        } catch (error) {
+            console.error('Error updating comment:', error);
+            setError(error instanceof Error ? error.message : 'Failed to update comment');
+        }
+    };
+
     const renderComment = (comment: Comment) => (
         <div key={comment.id} className="bg-white rounded-lg shadow p-4 mb-4">
             <div className="flex items-start space-x-3">
@@ -243,7 +420,32 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                             </span>
                         </div>
                     </div>
-                    <p className="mt-1 text-gray-700">{comment.content}</p>
+                    {editingComment === comment.id ? (
+                        <div className="mt-2">
+                            <textarea
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black"
+                                rows={3}
+                            />
+                            <div className="mt-2 flex gap-2">
+                                <button
+                                    onClick={() => handleSaveEdit(comment.id)}
+                                    className="text-sm text-green-600 hover:text-green-800"
+                                >
+                                    Save
+                                </button>
+                                <button
+                                    onClick={handleCancelEdit}
+                                    className="text-sm text-gray-600 hover:text-gray-800"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="mt-1 text-gray-700">{comment.content}</p>
+                    )}
                     {comment.media_url && (
                         <div className="mt-2">
                             {comment.media_type === 'image' ? (
@@ -253,13 +455,29 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                             ) : null}
                         </div>
                     )}
-                    <div className="mt-2">
+                    <div className="mt-2 flex gap-2">
                         <button
                             onClick={() => handleReply(comment.id)}
                             className="text-sm text-indigo-600 hover:text-indigo-800"
                         >
                             Reply
                         </button>
+                        {canEditComment(comment) && (
+                            <button
+                                onClick={() => handleStartEdit(comment)}
+                                className="text-sm text-blue-600 hover:text-blue-800"
+                            >
+                                Edit
+                            </button>
+                        )}
+                        {canDeleteComment(comment) && (
+                            <button
+                                onClick={() => handleDeleteComment(comment.id)}
+                                className="text-sm text-red-600 hover:text-red-800"
+                            >
+                                Delete
+                            </button>
+                        )}
                     </div>
                     {comment.replies && comment.replies.length > 0 && (
                         <div className="mt-4 ml-8 space-y-4">
@@ -323,8 +541,8 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                             <textarea
                                 value={newComment.content}
                                 onChange={(e) => setNewComment(prev => ({ ...prev, content: e.target.value }))}
-                                placeholder="Write a comment..."
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                placeholder="Write a comment or upload media..."
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-black"
                                 rows={3}
                             />
                         </div>

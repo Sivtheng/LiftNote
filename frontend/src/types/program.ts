@@ -89,4 +89,5 @@ export interface Comment {
         role: 'admin' | 'coach' | 'client';
     };
     replies?: Comment[];
+    allReplies?: Comment[];
 } 

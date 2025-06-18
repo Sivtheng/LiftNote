@@ -82,7 +82,7 @@ Route::middleware('auth:sanctum')->group(function () {
             
             // Add comment (client or coach only)
             Route::middleware('role:client,coach')->group(function () {
-                Route::post('/', [CommentController::class, 'addProgramComment']);
+                Route::post('/', [CommentController::class, 'store']);
             });
 
             // Update and delete comments (comment owner or admin)
@@ -106,23 +106,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('role:client')->group(function () {
             Route::put('/{progressLog}', [ProgressLogController::class, 'update']);
             Route::delete('/{progressLog}', [ProgressLogController::class, 'delete']);
-        });
-
-        // Comment Routes for Progress Logs
-        Route::prefix('/{progressLog}/comments')->group(function () {
-            // Get comments
-            Route::get('/', [CommentController::class, 'getProgressLogComments']);
-            
-            // Add comment (client or coach only)
-            Route::middleware('role:client,coach')->group(function () {
-                Route::post('/', [CommentController::class, 'addProgressLogComment']);
-            });
-
-            // Update and delete comments (comment owner or admin)
-            Route::prefix('/{comment}')->group(function () {
-                Route::put('/', [CommentController::class, 'updateProgressLogComment']);
-                Route::delete('/', [CommentController::class, 'deleteProgressLogComment']);
-            });
         });
     });
 
@@ -160,13 +143,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::put('/programs/{program}/weeks/{week}/days/{day}/exercises/{exercise}', [ProgramBuilderController::class, 'updateExercise']);
-});
 
-// Comment routes
-Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/programs/{program}/comments', [CommentController::class, 'index']);
-    Route::post('/programs/{program}/comments', [CommentController::class, 'store']);
+    // Recent comments route
     Route::get('/comments/recent', [CommentController::class, 'recent']);
-    Route::put('/comments/{comment}', [CommentController::class, 'update']);
-    Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
 });

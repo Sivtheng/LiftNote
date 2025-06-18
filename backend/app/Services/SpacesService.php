@@ -27,6 +27,24 @@ class SpacesService
 
     public function deleteFile(string $path): bool
     {
-        return $this->disk->delete($path);
+        \Log::info('Attempting to delete file from Spaces', [
+            'path' => $path,
+            'full_url' => $path
+        ]);
+        
+        try {
+            $result = $this->disk->delete($path);
+            \Log::info('File deletion result', [
+                'path' => $path,
+                'success' => $result
+            ]);
+            return $result;
+        } catch (\Exception $e) {
+            \Log::error('Error deleting file from Spaces', [
+                'path' => $path,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
     }
 } 

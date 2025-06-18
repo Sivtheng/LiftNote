@@ -11,9 +11,12 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\Rule;
 use App\Services\SpacesService;
 use Illuminate\Support\Str;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class CommentController extends Controller
 {
+    use AuthorizesRequests;
+
     protected $spacesService;
 
     public function __construct(SpacesService $spacesService)
@@ -36,34 +39,109 @@ class CommentController extends Controller
 
     public function store(Request $request, Program $program)
     {
-        $validated = $request->validate([
-            'content' => 'required|string|max:1000',
-            'media_type' => ['nullable', Rule::in(['text', 'image', 'video'])],
-            'media_file' => 'nullable|file|mimes:jpeg,png,jpg,gif,mp4,mov,avi|max:10240', // 10MB max
-            'parent_id' => 'nullable|exists:comments,id'
-        ]);
+        try {
+            \Log::info('Comment store method called', [
+                'program_id' => $program->id,
+                'user_id' => Auth::id(),
+                'request_data' => $request->all()
+            ]);
 
-        $mediaUrl = null;
-        if ($request->hasFile('media_file')) {
-            $file = $request->file('media_file');
-            $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
-            $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
+            // Verify user has access to this program
+            $user = Auth::user();
+            if (!$user->isAdmin() && 
+                $program->coach_id !== $user->id && 
+                $program->client_id !== $user->id) {
+                \Log::warning('Unauthorized comment attempt', [
+                    'user_id' => $user->id,
+                    'program_coach_id' => $program->coach_id,
+                    'program_client_id' => $program->client_id
+                ]);
+                return response()->json([
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $validated = $request->validate([
+                'content' => 'nullable|string|max:1000',
+                'media_type' => ['nullable', Rule::in(['text', 'image', 'video'])],
+                'media_file' => 'nullable|file|mimes:jpeg,png,jpg,gif,mp4,mov,avi|max:10240', // 10MB max
+                'parent_id' => 'nullable|exists:comments,id'
+            ]);
+
+            // Ensure either content or media file is provided
+            if (empty($validated['content']) && !$request->hasFile('media_file')) {
+                return response()->json([
+                    'message' => 'Either content or media file is required',
+                    'errors' => ['content' => ['Either content or media file is required.']]
+                ], 422);
+            }
+
+            \Log::info('Validation passed', ['validated_data' => $validated]);
+
+            $mediaUrl = null;
+            $mediaType = 'text';
+            
+            if ($request->hasFile('media_file')) {
+                $file = $request->file('media_file');
+                $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
+                $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
+                \Log::info('Media file uploaded', ['media_url' => $mediaUrl]);
+            }
+
+            $comment = $program->comments()->create([
+                'content' => $validated['content'],
+                'media_type' => $mediaType,
+                'media_url' => $mediaUrl,
+                'parent_id' => $validated['parent_id'] ?? null,
+                'user_id' => Auth::id()
+            ]);
+
+            // Load the comment with user and replies relationships
+            $comment->load('user');
+            
+            // If this is a reply, load the parent comment's replies to maintain structure
+            if ($comment->parent_id) {
+                $parentComment = Comment::with(['user', 'replies.user'])->find($comment->parent_id);
+                if ($parentComment) {
+                    $this->loadNestedReplies($parentComment);
+                    // Return the parent comment instead so frontend can update properly
+                    return response()->json([
+                        'message' => 'Comment created successfully',
+                        'comment' => $parentComment
+                    ], 201);
+                }
+            }
+
+            \Log::info('Comment created successfully', ['comment_id' => $comment->id]);
+
+            return response()->json([
+                'message' => 'Comment created successfully',
+                'comment' => $comment
+            ], 201);
+        } catch (ModelNotFoundException $e) {
+            \Log::error('Program not found', ['error' => $e->getMessage()]);
+            return response()->json([
+                'message' => 'Program not found'
+            ], 404);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Log::error('Validation failed', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            \Log::error('Error creating comment', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => 'Error creating comment',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        $comment = $program->comments()->create([
-            'content' => $validated['content'],
-            'media_type' => $mediaUrl ? ($mediaType ?? 'text') : 'text',
-            'media_url' => $mediaUrl,
-            'parent_id' => $validated['parent_id'] ?? null,
-            'user_id' => Auth::id()
-        ]);
-
-        $comment->load('user');
-
-        return response()->json([
-            'message' => 'Comment created successfully',
-            'comment' => $comment
-        ], 201);
     }
 
     public function update(Request $request, Comment $comment)
@@ -75,23 +153,26 @@ class CommentController extends Controller
             'media_file' => 'nullable|file|mimes:jpeg,png,jpg,gif,mp4,mov,avi|max:10240', // 10MB max
         ]);
 
-        $mediaUrl = $comment->media_url;
+        $updateData = [
+            'content' => $validated['content']
+        ];
+        
+        // Only update media if a new file is provided
         if ($request->hasFile('media_file')) {
             // Delete old file if exists
-            if ($mediaUrl) {
-                $this->spacesService->deleteFile($mediaUrl);
+            if ($comment->media_url) {
+                $this->spacesService->deleteFile($comment->media_url);
             }
 
             $file = $request->file('media_file');
             $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
             $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
+            
+            $updateData['media_type'] = $mediaType;
+            $updateData['media_url'] = $mediaUrl;
         }
 
-        $comment->update([
-            'content' => $validated['content'],
-            'media_type' => $mediaUrl ? ($mediaType ?? 'text') : 'text',
-            'media_url' => $mediaUrl
-        ]);
+        $comment->update($updateData);
 
         return response()->json([
             'message' => 'Comment updated successfully',
@@ -103,12 +184,26 @@ class CommentController extends Controller
     {
         $this->authorize('delete', $comment);
 
+        \Log::info('Deleting comment', [
+            'comment_id' => $comment->id,
+            'has_media' => !empty($comment->media_url),
+            'media_url' => $comment->media_url
+        ]);
+
         // Delete associated file if exists
         if ($comment->media_url) {
+            \Log::info('Attempting to delete media file', [
+                'comment_id' => $comment->id,
+                'media_url' => $comment->media_url
+            ]);
             $this->spacesService->deleteFile($comment->media_url);
         }
 
         $comment->delete();
+
+        \Log::info('Comment deleted successfully', [
+            'comment_id' => $comment->id
+        ]);
 
         return response()->json([
             'message' => 'Comment deleted successfully'
@@ -118,43 +213,7 @@ class CommentController extends Controller
     // Add comment to a program
     public function addProgramComment(Request $request, Program $program)
     {
-        try {
-            // Verify user has access to this program
-            $user = Auth::user();
-            if (!$user->isAdmin() && 
-                $program->coach_id !== $user->id && 
-                $program->client_id !== $user->id) {
-                return response()->json([
-                    'message' => 'Unauthorized'
-                ], 403);
-            }
-
-            // Validate input
-            $validated = $request->validate([
-                'content' => 'required|string'
-            ]);
-
-            // Create comment
-            $comment = Comment::create([
-                'content' => $validated['content'],
-                'user_id' => Auth::id(),
-                'program_id' => $program->id
-            ]);
-
-            return response()->json([
-                'message' => 'Comment added successfully',
-                'comment' => $comment->load(['user'])
-            ], 201);
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Program not found'
-            ], 404);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error adding comment',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+        return $this->store($request, $program);
     }
 
     // Update a program comment
@@ -166,23 +225,10 @@ class CommentController extends Controller
                 return response()->json(['message' => 'Comment not found'], 404);
             }
 
-            // Verify ownership or admin
-            if ($comment->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
+            // Use the policy for authorization instead of manual checks
+            $this->authorize('update', $comment);
 
-            // Validate input
-            $validated = $request->validate([
-                'content' => 'required|string'
-            ]);
-
-            // Update comment
-            $comment->update($validated);
-
-            return response()->json([
-                'message' => 'Comment updated successfully',
-                'comment' => $comment->fresh(['user'])
-            ]);
+            return $this->update($request, $comment);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error updating comment',
@@ -194,132 +240,39 @@ class CommentController extends Controller
     // Delete a program comment
     public function deleteProgramComment(Program $program, Comment $comment)
     {
+        \Log::info('deleteProgramComment called', [
+            'program_id' => $program->id,
+            'comment_id' => $comment->id,
+            'user_id' => Auth::id()
+        ]);
+
         try {
             // Verify the comment belongs to this program
             if ($comment->program_id !== $program->id) {
-                return $this->respondTo([
+                \Log::warning('Comment does not belong to program', [
+                    'comment_program_id' => $comment->program_id,
+                    'requested_program_id' => $program->id
+                ]);
+                return response()->json([
                     'message' => 'Comment not found'
-                ]);
+                ], 404);
             }
 
-            // Verify ownership or admin
-            if ($comment->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
-                return $this->respondTo([
-                    'message' => 'Unauthorized'
-                ]);
-            }
+            \Log::info('About to authorize delete');
+            // Use the policy for authorization instead of manual checks
+            $this->authorize('delete', $comment);
 
-            $comment->forceDelete(); // Use forceDelete to ensure actual deletion
-            return $this->respondTo([
-                'message' => 'Comment deleted successfully'
-            ], 'programs.show');
+            \Log::info('Authorization passed, calling destroy');
+            return $this->destroy($comment);
         } catch (\Exception $e) {
-            return $this->respondTo([
+            \Log::error('Error in deleteProgramComment', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
                 'message' => 'Error deleting comment',
                 'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    // Add comment to a progress log
-    public function addProgressLogComment(Request $request, ProgressLog $progressLog)
-    {
-        try {
-            // Verify user has access to this progress log
-            $user = Auth::user();
-            $program = $progressLog->program;
-
-            if (!$user->isAdmin() && 
-                $program->coach_id !== $user->id && 
-                $program->client_id !== $user->id) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-
-            // Validate input
-            $validated = $request->validate([
-                'content' => 'required|string'
-            ]);
-
-            // Create comment
-            $comment = Comment::create([
-                'content' => $validated['content'],
-                'user_id' => Auth::id(),
-                'progress_log_id' => $progressLog->id
-            ]);
-
-            return response()->json([
-                'message' => 'Comment added successfully',
-                'comment' => $comment->load(['user'])
-            ], 201);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error adding comment',
-                'error' => $e->getMessage()
             ], 500);
-        }
-    }
-
-    // Update a progress log comment
-    public function updateProgressLogComment(Request $request, ProgressLog $progressLog, Comment $comment)
-    {
-        try {
-            // Verify the comment belongs to this progress log
-            if ($comment->progress_log_id !== $progressLog->id) {
-                return response()->json(['message' => 'Comment not found'], 404);
-            }
-
-            // Verify ownership or admin
-            if ($comment->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-
-            // Validate input
-            $validated = $request->validate([
-                'content' => 'required|string'
-            ]);
-
-            // Update comment
-            $comment->update($validated);
-
-            return response()->json([
-                'message' => 'Comment updated successfully',
-                'comment' => $comment->fresh(['user'])
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error updating comment',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    // Delete a progress log comment
-    public function deleteProgressLogComment(ProgressLog $progressLog, Comment $comment)
-    {
-        try {
-            // Verify the comment belongs to this progress log
-            if ($comment->progress_log_id !== $progressLog->id) {
-                return $this->respondTo([
-                    'message' => 'Comment not found'
-                ]);
-            }
-
-            // Verify ownership or admin
-            if ($comment->user_id !== Auth::id() && !Auth::user()->isAdmin()) {
-                return $this->respondTo([
-                    'message' => 'Unauthorized'
-                ]);
-            }
-
-            $comment->forceDelete(); // Use forceDelete to ensure actual deletion
-            return $this->respondTo([
-                'message' => 'Comment deleted successfully'
-            ], 'progress-logs.show');
-        } catch (\Exception $e) {
-            return $this->respondTo([
-                'message' => 'Error deleting comment',
-                'error' => $e->getMessage()
-            ]);
         }
     }
 
@@ -336,11 +289,19 @@ class CommentController extends Controller
             }
 
             $comments = Comment::where('program_id', $program->id)
-                ->with('user')
+                ->whereNull('parent_id')
+                ->with(['user', 'replies.user'])
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            return response()->json($comments);
+            // Manually load nested replies for each comment
+            $comments->each(function ($comment) {
+                $this->loadNestedReplies($comment);
+            });
+
+            return response()->json([
+                'comments' => $comments
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Error fetching comments',
@@ -349,31 +310,13 @@ class CommentController extends Controller
         }
     }
 
-    // Get comments for a progress log
-    public function getProgressLogComments(ProgressLog $progressLog)
+    private function loadNestedReplies($comment)
     {
-        try {
-            // Verify access rights
-            $user = Auth::user();
-            $program = $progressLog->program;
-
-            if (!$user->isAdmin() && 
-                $program->coach_id !== $user->id && 
-                $program->client_id !== $user->id) {
-                return response()->json(['message' => 'Unauthorized'], 403);
-            }
-
-            $comments = Comment::where('progress_log_id', $progressLog->id)
-                ->with('user')
-                ->orderBy('created_at', 'desc')
-                ->get();
-
-            return response()->json($comments);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Error fetching comments',
-                'error' => $e->getMessage()
-            ], 500);
+        if ($comment->replies && $comment->replies->count() > 0) {
+            $comment->replies->load('user');
+            $comment->replies->each(function ($reply) {
+                $this->loadNestedReplies($reply);
+            });
         }
     }
 
