@@ -74,10 +74,9 @@ print_status "Creating project directory..."
 sudo mkdir -p /var/www/liftnote
 sudo chown $USER:$USER /var/www/liftnote
 
-# Clone repository (you'll need to update this with your actual repo URL)
-print_status "Cloning repository..."
+# Navigate to project directory (repository should already be cloned)
+print_status "Setting up project in existing repository..."
 cd /var/www/liftnote
-git clone https://github.com/yourusername/LiftNote.git .
 
 # Copy Nginx configuration
 print_status "Setting up Nginx configuration..."
@@ -94,7 +93,7 @@ cp backend/env.production backend/.env.production
 
 # Set up SSL certificate (you'll need to update the domain)
 print_status "Setting up SSL certificate..."
-sudo certbot --nginx -d api-liftnote.xyz --non-interactive --agree-tos --email your-email@example.com
+sudo certbot --nginx -d api-liftnote.xyz --non-interactive --agree-tos --email sivtheng25@example.com
 
 # Set up automatic SSL renewal
 print_status "Setting up automatic SSL renewal..."
@@ -121,6 +120,5 @@ sudo systemctl start docker
 print_status "🎉 Droplet setup completed!"
 print_warning "Please update the following files with your actual values:"
 print_warning "1. backend/.env.production - Update database and DigitalOcean Spaces credentials"
-print_warning "2. Update your GitHub repository URL in this script"
-print_warning "3. Update your email address for SSL certificate"
-print_warning "4. Run the deployment script: ./scripts/deploy.sh" 
+print_warning "2. Update your email address for SSL certificate"
+print_warning "3. Run the deployment script: ./scripts/deploy.sh" 
