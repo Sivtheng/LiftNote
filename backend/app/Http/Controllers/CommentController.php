@@ -212,26 +212,77 @@ class CommentController extends Controller
 
         $validated = $request->validate([
             'content' => 'required|string|max:1000',
-            'media_file' => 'nullable|file|mimes:jpeg,png,jpg,gif,mp4,mov,avi|max:10240', // 10MB max
+            'media_file' => 'nullable', // Allow both base64 and file uploads
         ]);
 
         $updateData = [
             'content' => $validated['content']
         ];
         
-        // Only update media if a new file is provided
-        if ($request->hasFile('media_file')) {
+        // Handle both base64 file upload and regular file uploads
+        if ($request->has('media_file') || $request->hasFile('media_file')) {
             // Delete old file if exists
             if ($comment->media_url) {
                 $this->spacesService->deleteFile($comment->media_url);
             }
 
-            $file = $request->file('media_file');
-            $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
-            $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
-            
-            $updateData['media_type'] = $mediaType;
-            $updateData['media_url'] = $mediaUrl;
+            if ($request->has('media_file')) {
+                $mediaData = $request->input('media_file');
+                
+                // Check if it's base64 format (has data, type, name)
+                if (is_array($mediaData) && isset($mediaData['data']) && isset($mediaData['type']) && isset($mediaData['name'])) {
+                    // Validate file type
+                    $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'video/mp4', 'video/mov', 'video/avi', 'video/quicktime', 'video/x-msvideo'];
+                    if (!in_array($mediaData['type'], $allowedTypes)) {
+                        return response()->json([
+                            'message' => 'Invalid file type',
+                            'errors' => ['media_file' => ['The media file must be a file of type: jpeg, png, jpg, gif, mp4, mov, avi.']]
+                        ], 422);
+                    }
+                    
+                    // Check file size (100MB limit for base64)
+                    $base64Data = $mediaData['data'];
+                    $fileSize = strlen($base64Data) * 3 / 4; // Approximate size of decoded base64
+                    if ($fileSize > 100 * 1024 * 1024) {
+                        return response()->json([
+                            'message' => 'File too large',
+                            'errors' => ['media_file' => ['The media file must be smaller than 100MB.']]
+                        ], 422);
+                    }
+                    
+                    // Decode base64 and create temporary file
+                    $decodedData = base64_decode($base64Data);
+                    $tempFile = tempnam(sys_get_temp_dir(), 'upload_');
+                    file_put_contents($tempFile, $decodedData);
+                    
+                    // Create UploadedFile instance
+                    $uploadedFile = new \Illuminate\Http\UploadedFile(
+                        $tempFile,
+                        $mediaData['name'],
+                        $mediaData['type'],
+                        null,
+                        true
+                    );
+                    
+                    // Upload to cloud storage
+                    $mediaType = Str::startsWith($mediaData['type'], 'image/') ? 'image' : 'video';
+                    $mediaUrl = $this->spacesService->uploadFile($uploadedFile, 'comments');
+                    
+                    // Clean up temp file
+                    unlink($tempFile);
+                    
+                    $updateData['media_type'] = $mediaType;
+                    $updateData['media_url'] = $mediaUrl;
+                }
+            } else if ($request->hasFile('media_file')) {
+                // Handle regular file upload (web)
+                $file = $request->file('media_file');
+                $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
+                $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
+                
+                $updateData['media_type'] = $mediaType;
+                $updateData['media_url'] = $mediaUrl;
+            }
         }
 
         $comment->update($updateData);

@@ -92,6 +92,11 @@ export default function CommentsScreen() {
     const [editContent, setEditContent] = useState('');
     const [replyingTo, setReplyingTo] = useState<number | null>(null);
     const [replyContent, setReplyContent] = useState('');
+    const [replyMedia, setReplyMedia] = useState<{
+        uri: string;
+        type: string;
+        name: string;
+    } | null>(null);
 
     useEffect(() => {
         fetchPrograms();
@@ -243,11 +248,18 @@ export default function CommentsScreen() {
                     duration: asset.duration
                 });
                 
-                setSelectedMedia({
+                const mediaData = {
                     uri: asset.uri,
                     type: asset.type || 'image',
                     name: fileName,
-                });
+                };
+                
+                // Set media based on whether we're replying or adding a new comment
+                if (replyingTo) {
+                    setReplyMedia(mediaData);
+                } else {
+                    setSelectedMedia(mediaData);
+                }
             }
         } catch (error) {
             console.error('Error picking media:', error);
@@ -256,7 +268,11 @@ export default function CommentsScreen() {
     };
 
     const removeMedia = () => {
-        setSelectedMedia(null);
+        if (replyingTo) {
+            setReplyMedia(null);
+        } else {
+            setSelectedMedia(null);
+        }
     };
 
     const handleAddComment = async () => {
@@ -298,17 +314,23 @@ export default function CommentsScreen() {
     };
 
     const handleReply = async () => {
-        if (!replyContent.trim() || !replyingTo || !selectedProgramId) return;
+        if ((!replyContent.trim() && !replyMedia) || !replyingTo || !selectedProgramId) return;
 
         try {
             setSubmitting(true);
-            const response = await commentService.addProgramComment(selectedProgramId, replyContent, replyingTo.toString());
+            const response = await commentService.addProgramCommentWithMedia(
+                selectedProgramId, 
+                replyContent, 
+                replyMedia,
+                replyingTo.toString()
+            );
             console.log('Added reply response:', response);
             
             // Refresh comments to get the updated structure
             await fetchComments();
             setReplyingTo(null);
             setReplyContent('');
+            setReplyMedia(null);
         } catch (err) {
             console.error('Error adding reply:', err);
             setError(err instanceof Error ? err.message : 'Failed to add reply');
@@ -703,7 +725,7 @@ export default function CommentsScreen() {
                             onPress={() => {
                                 setReplyingTo(null);
                                 setReplyContent('');
-                                setSelectedMedia(null);
+                                setReplyMedia(null);
                             }}
                         >
                             <Text style={styles.cancelReplyText}>Cancel</Text>
@@ -732,9 +754,9 @@ export default function CommentsScreen() {
                         <Ionicons name="camera" size={24} color="#007AFF" />
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={[styles.sendButton, (!(replyingTo ? replyContent : newComment).trim() && !selectedMedia) && styles.sendButtonDisabled]}
+                        style={[styles.sendButton, (!(replyingTo ? replyContent : newComment).trim() && !(replyingTo ? replyMedia : selectedMedia)) && styles.sendButtonDisabled]}
                         onPress={replyingTo ? handleReply : handleAddComment}
-                        disabled={submitting || (!(replyingTo ? replyContent : newComment).trim() && !selectedMedia)}
+                        disabled={submitting || (!(replyingTo ? replyContent : newComment).trim() && !(replyingTo ? replyMedia : selectedMedia))}
                     >
                         {submitting ? (
                             <ActivityIndicator size="small" color="#007AFF" />
@@ -745,15 +767,14 @@ export default function CommentsScreen() {
                 </View>
 
                 {/* Media Preview */}
-                {selectedMedia && (
+                {(replyingTo ? replyMedia : selectedMedia) && (
                     <View style={styles.mediaPreviewContainer}>
                         <View style={styles.mediaPreview}>
-                            {selectedMedia.type === 'image' ? (
-                                <Image
-                                    source={{ uri: selectedMedia.uri }}
-                                    style={styles.mediaPreviewImage}
-                                    resizeMode="cover"
-                                />
+                            {(replyingTo ? replyMedia : selectedMedia)?.type === 'image' ? (
+                                <View style={styles.mediaPreviewVideo}>
+                                    <Ionicons name="image" size={32} color="#007AFF" />
+                                    <Text style={styles.mediaPreviewText}>Image Selected</Text>
+                                </View>
                             ) : (
                                 <View style={styles.mediaPreviewVideo}>
                                     <Ionicons name="play-circle" size={32} color="#007AFF" />

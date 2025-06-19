@@ -104,29 +104,35 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file size (10MB max)
-        if (file.size > 10 * 1024 * 1024) {
-            setError('File size must be less than 10MB');
+        // Validate file size (100MB max to match backend)
+        if (file.size > 100 * 1024 * 1024) {
+            setError('File size must be less than 100MB');
             return;
         }
 
-        // Validate file type
-        const isImage = file.type.startsWith('image/');
-        const isVideo = file.type.startsWith('video/');
-        if (!isImage && !isVideo) {
-            setError('Only image and video files are allowed');
+        // Validate file type to match backend allowed types
+        const allowedTypes = [
+            'image/jpeg', 'image/png', 'image/jpg', 'image/gif',
+            'video/mp4', 'video/mov', 'video/avi', 'video/quicktime', 'video/x-msvideo'
+        ];
+        
+        if (!allowedTypes.includes(file.type)) {
+            setError('Only image (JPEG, PNG, JPG, GIF) and video (MP4, MOV, AVI) files are allowed');
             return;
         }
 
         setSelectedFile(file);
         setNewComment(prev => ({
             ...prev,
-            media_type: isImage ? 'image' : 'video'
+            media_type: file.type.startsWith('image/') ? 'image' : 'video'
         }));
 
         // Create preview URL
         const url = URL.createObjectURL(file);
         setPreviewUrl(url);
+        
+        // Clear any previous errors
+        setError('');
     };
 
     const handleRemoveFile = () => {
@@ -178,13 +184,34 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 programId: programId
             });
 
-            const formData = new FormData();
-            formData.append('content', newComment.content);
-            if (selectedFile) {
-                formData.append('media_file', selectedFile);
-            }
+            // Prepare request data
+            const requestData: any = {
+                content: newComment.content,
+            };
+
             if (newComment.parent_id) {
-                formData.append('parent_id', newComment.parent_id.toString());
+                requestData.parent_id = newComment.parent_id;
+            }
+
+            // Convert file to base64 if selected
+            if (selectedFile) {
+                const base64Data = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const result = reader.result as string;
+                        // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+                        const base64 = result.split(',')[1];
+                        resolve(base64);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(selectedFile);
+                });
+
+                requestData.media_file = {
+                    data: base64Data,
+                    type: selectedFile.type,
+                    name: selectedFile.name
+                };
             }
 
             const url = `${API_URL}/programs/${programId}/comments`;
@@ -194,10 +221,11 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
+                    'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'Authorization': `Bearer ${token}`
                 },
-                body: formData
+                body: JSON.stringify(requestData)
             });
 
             console.log('Response status:', response.status);
@@ -269,13 +297,10 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
     const canEditComment = (comment: Comment): boolean => {
         if (!currentUser) return false;
         
-        // Only text comments can be edited
-        if (comment.media_type !== 'text') return false;
-        
-        // Admin can edit any text comment
+        // Admin can edit any comment
         if (currentUser.role === 'admin') return true;
         
-        // User can edit their own text comment
+        // User can edit their own comment
         if (currentUser.id === comment.user_id) return true;
         
         return false;
@@ -561,7 +586,7 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                                     <input
                                         type="file"
                                         className="hidden"
-                                        accept="image/*,video/*"
+                                        accept="image/jpeg,image/png,image/jpg,image/gif,video/mp4,video/mov,video/avi,video/quicktime,video/x-msvideo"
                                         onChange={handleFileChange}
                                     />
                                 </label>

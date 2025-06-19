@@ -206,12 +206,16 @@ export const commentService = {
         uri: string;
         type: string;
         name: string;
-    } | null) => {
+    } | null, parentId?: string) => {
         try {
             const requestData: any = {};
             
             if (content) {
                 requestData.content = content;
+            }
+            
+            if (parentId) {
+                requestData.parent_id = parentId;
             }
             
             if (media) {
@@ -293,6 +297,8 @@ export const commentService = {
             console.log('Sending request data:', {
                 hasContent: !!content,
                 hasMedia: !!media,
+                hasParentId: !!parentId,
+                parentId: parentId,
                 mediaType: media?.type,
                 mediaName: media?.name
             });
