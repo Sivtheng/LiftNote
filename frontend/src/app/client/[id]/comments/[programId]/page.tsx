@@ -392,7 +392,7 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
         }
     };
 
-    const renderComment = (comment: Comment) => (
+    const renderComment = (comment: Comment, level: number = 0) => (
         <div key={comment.id} className="bg-white rounded-lg shadow p-4 mb-4">
             <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
@@ -456,12 +456,15 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                         </div>
                     )}
                     <div className="mt-2 flex gap-2">
-                        <button
-                            onClick={() => handleReply(comment.id)}
-                            className="text-sm text-indigo-600 hover:text-indigo-800"
-                        >
-                            Reply
-                        </button>
+                        {/* Only show reply button for levels 0 and 1 (max 2 levels deep) */}
+                        {level < 2 && (
+                            <button
+                                onClick={() => handleReply(comment.id)}
+                                className="text-sm text-indigo-600 hover:text-indigo-800"
+                            >
+                                Reply
+                            </button>
+                        )}
                         {canEditComment(comment) && (
                             <button
                                 onClick={() => handleStartEdit(comment)}
@@ -481,7 +484,7 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                     </div>
                     {comment.replies && comment.replies.length > 0 && (
                         <div className="mt-4 ml-8 space-y-4">
-                            {comment.replies.map(reply => renderComment(reply))}
+                            {comment.replies.map(reply => renderComment(reply, level + 1))}
                         </div>
                     )}
                 </div>

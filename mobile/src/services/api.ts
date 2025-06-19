@@ -208,30 +208,105 @@ export const commentService = {
         name: string;
     } | null) => {
         try {
-            const formData = new FormData();
+            const requestData: any = {};
             
             if (content) {
-                formData.append('content', content);
+                requestData.content = content;
             }
             
             if (media) {
-                const mediaFile = {
-                    uri: media.uri,
-                    type: media.type === 'video' ? 'video/mp4' : 'image/jpeg',
-                    name: media.name,
-                } as any;
-                formData.append('media_file', mediaFile);
+                // Determine the correct MIME type based on file extension
+                let mimeType = 'image/jpeg'; // default
+                if (media.type === 'video') {
+                    mimeType = 'video/mp4';
+                } else if (media.name) {
+                    const extension = media.name.toLowerCase().split('.').pop();
+                    switch (extension) {
+                        case 'png':
+                            mimeType = 'image/png';
+                            break;
+                        case 'gif':
+                            mimeType = 'image/gif';
+                            break;
+                        case 'jpg':
+                        case 'jpeg':
+                            mimeType = 'image/jpeg';
+                            break;
+                        case 'mp4':
+                            mimeType = 'video/mp4';
+                            break;
+                        case 'mov':
+                            mimeType = 'video/quicktime';
+                            break;
+                        case 'avi':
+                            mimeType = 'video/x-msvideo';
+                            break;
+                        default:
+                            mimeType = media.type === 'video' ? 'video/mp4' : 'image/jpeg';
+                    }
+                }
+                
+                console.log('Starting base64 conversion for:', media.uri);
+                
+                // For React Native, we'll use FileReader which should be available
+                try {
+                    // Use fetch to get the file as a blob, then convert to base64
+                    const response = await fetch(media.uri);
+                    console.log('Fetch response received');
+                    
+                    const blob = await response.blob();
+                    console.log('Blob created, size:', blob.size);
+                    
+                    // Convert blob to base64 using FileReader
+                    const base64Data = await new Promise<string>((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            const result = reader.result as string;
+                            // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
+                            const base64 = result.split(',')[1];
+                            console.log('Base64 conversion completed, length:', base64.length);
+                            resolve(base64);
+                        };
+                        reader.onerror = () => {
+                            reject(new Error('FileReader failed'));
+                        };
+                        reader.readAsDataURL(blob);
+                    });
+                    
+                    requestData.media_file = {
+                        data: base64Data,
+                        type: mimeType,
+                        name: media.name,
+                    };
+                    
+                    console.log('Sending media data as base64:', {
+                        type: mimeType,
+                        name: media.name,
+                        dataLength: base64Data.length
+                    });
+                } catch (error: any) {
+                    console.error('Error converting file to base64:', error);
+                    throw new Error('Failed to convert file to base64: ' + error.message);
+                }
             }
 
-            const response = await api.post(`/programs/${programId}/comments`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
+            console.log('Sending request data:', {
+                hasContent: !!content,
+                hasMedia: !!media,
+                mediaType: media?.type,
+                mediaName: media?.name
             });
+
+            const response = await api.post(`/programs/${programId}/comments`, requestData);
             
             return response.data;
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error adding comment with media:', error);
+            if (error.response) {
+                console.error('Response data:', error.response.data);
+                console.error('Response status:', error.response.status);
+                console.error('Response headers:', error.response.headers);
+            }
             throw error;
         }
     },

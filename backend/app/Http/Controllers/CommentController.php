@@ -64,12 +64,12 @@ class CommentController extends Controller
             $validated = $request->validate([
                 'content' => 'nullable|string|max:1000',
                 'media_type' => ['nullable', Rule::in(['text', 'image', 'video'])],
-                'media_file' => 'nullable|file|mimes:jpeg,png,jpg,gif,mp4,mov,avi|max:10240', // 10MB max
+                'media_file' => 'nullable', // Allow both base64 and file uploads
                 'parent_id' => 'nullable|exists:comments,id'
             ]);
 
             // Ensure either content or media file is provided
-            if (empty($validated['content']) && !$request->hasFile('media_file')) {
+            if (empty($validated['content'] ?? '') && !$request->has('media_file') && !$request->hasFile('media_file')) {
                 return response()->json([
                     'message' => 'Either content or media file is required',
                     'errors' => ['content' => ['Either content or media file is required.']]
@@ -81,15 +81,77 @@ class CommentController extends Controller
             $mediaUrl = null;
             $mediaType = 'text';
             
-            if ($request->hasFile('media_file')) {
-                $file = $request->file('media_file');
-                $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
-                $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
-                \Log::info('Media file uploaded', ['media_url' => $mediaUrl]);
+            // Handle both base64 file upload from React Native and regular file uploads from web
+            if ($request->has('media_file') || $request->hasFile('media_file')) {
+                if ($request->has('media_file')) {
+                    $mediaData = $request->input('media_file');
+                    \Log::info('Received media data:', array_keys($mediaData));
+                    
+                    // Check if it's base64 format (has data, type, name)
+                    if (is_array($mediaData) && isset($mediaData['data']) && isset($mediaData['type']) && isset($mediaData['name'])) {
+                        // Validate file type
+                        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'video/mp4', 'video/mov', 'video/avi', 'video/quicktime', 'video/x-msvideo'];
+                        if (!in_array($mediaData['type'], $allowedTypes)) {
+                            return response()->json([
+                                'message' => 'Invalid file type',
+                                'errors' => ['media_file' => ['The media file must be a file of type: jpeg, png, jpg, gif, mp4, mov, avi.']]
+                            ], 422);
+                        }
+                        
+                        // Check file size (100MB limit for base64)
+                        $base64Data = $mediaData['data'];
+                        $fileSize = strlen($base64Data) * 3 / 4; // Approximate size of decoded base64
+                        if ($fileSize > 100 * 1024 * 1024) {
+                            return response()->json([
+                                'message' => 'File too large',
+                                'errors' => ['media_file' => ['The media file must be smaller than 100MB.']]
+                            ], 422);
+                        }
+                        
+                        // Decode base64 and create temporary file
+                        $decodedData = base64_decode($base64Data);
+                        $tempFile = tempnam(sys_get_temp_dir(), 'upload_');
+                        file_put_contents($tempFile, $decodedData);
+                        
+                        // Create UploadedFile instance
+                        $uploadedFile = new \Illuminate\Http\UploadedFile(
+                            $tempFile,
+                            $mediaData['name'],
+                            $mediaData['type'],
+                            null,
+                            true
+                        );
+                        
+                        // Upload to cloud storage
+                        $mediaType = Str::startsWith($mediaData['type'], 'image/') ? 'image' : 'video';
+                        $mediaUrl = $this->spacesService->uploadFile($uploadedFile, 'comments');
+                        
+                        // Clean up temp file
+                        unlink($tempFile);
+                        
+                        \Log::info('Processed base64 media', [
+                            'type' => $mediaType,
+                            'original_type' => $mediaData['type'],
+                            'file_size' => $fileSize,
+                            'media_url' => $mediaUrl
+                        ]);
+                    } else {
+                        return response()->json([
+                            'message' => 'Invalid media file format',
+                            'errors' => ['media_file' => ['The media file field must be a valid file.']]
+                        ], 422);
+                    }
+                } else if ($request->hasFile('media_file')) {
+                    // Handle regular file upload (web)
+                    $file = $request->file('media_file');
+                    $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
+                    $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
+                    \Log::info('Media file uploaded', ['media_url' => $mediaUrl]);
+                }
             }
 
             $comment = $program->comments()->create([
-                'content' => $validated['content'],
+                'content' => $validated['content'] ?? null,
                 'media_type' => $mediaType,
                 'media_url' => $mediaUrl,
                 'parent_id' => $validated['parent_id'] ?? null,
@@ -317,12 +379,17 @@ class CommentController extends Controller
         }
     }
 
-    private function loadNestedReplies($comment)
+    private function loadNestedReplies($comment, $level = 0)
     {
+        // Limit to 2 levels of replies
+        if ($level >= 2) {
+            return;
+        }
+        
         if ($comment->replies && $comment->replies->count() > 0) {
             $comment->replies->load(['user', 'parent.user']);
-            $comment->replies->each(function ($reply) {
-                $this->loadNestedReplies($reply);
+            $comment->replies->each(function ($reply) use ($level) {
+                $this->loadNestedReplies($reply, $level + 1);
             });
         }
     }

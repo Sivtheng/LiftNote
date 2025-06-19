@@ -14,11 +14,13 @@ import {
     ScrollView,
     KeyboardAvoidingView,
     Keyboard,
+    RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Video, ResizeMode } from 'expo-av';
-import { commentService, programService } from '../services/api';
+import { useFocusEffect } from '@react-navigation/native';
+import { commentService, programService, authService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface User {
@@ -82,6 +84,7 @@ export default function CommentsScreen() {
         name: string;
     } | null>(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
@@ -102,14 +105,40 @@ export default function CommentsScreen() {
         }
     }, [selectedProgramId]);
 
+    // Auto-refresh when screen comes into focus
+    useFocusEffect(
+        React.useCallback(() => {
+            if (selectedProgramId) {
+                fetchComments();
+            }
+        }, [selectedProgramId])
+    );
+
     const getCurrentUser = async () => {
         try {
+            // Try to get user data from API first
+            const response = await authService.getProfile();
+            if (response.user) {
+                setCurrentUser(response.user);
+                return;
+            }
+            
+            // Fallback to AsyncStorage if API fails
             const userData = await AsyncStorage.getItem('user');
             if (userData) {
                 setCurrentUser(JSON.parse(userData));
             }
         } catch (error) {
             console.error('Error getting current user:', error);
+            // Try AsyncStorage as fallback
+            try {
+                const userData = await AsyncStorage.getItem('user');
+                if (userData) {
+                    setCurrentUser(JSON.parse(userData));
+                }
+            } catch (storageError) {
+                console.error('Error getting user from storage:', storageError);
+            }
         }
     };
 
@@ -140,10 +169,14 @@ export default function CommentsScreen() {
         }
     };
 
-    const fetchComments = async () => {
+    const fetchComments = async (isRefreshing = false) => {
         if (!selectedProgramId) return;
         
         try {
+            if (isRefreshing) {
+                setRefreshing(true);
+            }
+            
             console.log('Fetching comments for program:', selectedProgramId);
             const response = await commentService.getProgramComments(selectedProgramId);
             console.log('Comments data:', response);
@@ -152,15 +185,22 @@ export default function CommentsScreen() {
         } catch (err) {
             console.error('Error fetching comments:', err);
             setError(err instanceof Error ? err.message : 'Failed to fetch comments');
+        } finally {
+            if (isRefreshing) {
+                setRefreshing(false);
+            }
         }
+    };
+
+    const handleRefresh = () => {
+        fetchComments(true);
     };
 
     const pickMedia = async () => {
         try {
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.All,
-                allowsEditing: true,
-                aspect: [4, 3],
+                allowsEditing: false, // Don't force cropping
                 quality: 0.8,
                 videoMaxDuration: 60, // Limit video to 60 seconds
             });
@@ -168,16 +208,45 @@ export default function CommentsScreen() {
             if (!result.canceled && result.assets[0]) {
                 const asset = result.assets[0];
                 
-                // Check file size (10MB limit)
-                if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) {
-                    Alert.alert('File too large', 'Please select a file smaller than 10MB');
-                    return;
+                // Check file size (100MB limit) - only check if fileSize is available and reasonable
+                // For videos, fileSize might not be accurate, so we'll let the backend handle validation
+                if (asset.fileSize && asset.fileSize > 0 && asset.fileSize < 10 * 1024 * 1024 * 1024) { // Less than 10GB to avoid obviously wrong values
+                    if (asset.fileSize > 100 * 1024 * 1024) {
+                        Alert.alert('File too large', 'Please select a file smaller than 100MB');
+                        return;
+                    }
                 }
+                
+                // Determine file type and extension
+                const isVideo = asset.type === 'video';
+                const extension = isVideo ? 'mp4' : 'jpg';
+                
+                // Generate proper filename
+                let fileName = asset.fileName;
+                if (!fileName) {
+                    // If no filename, generate one with proper extension
+                    fileName = `media_${Date.now()}.${extension}`;
+                } else {
+                    // Ensure filename has proper extension
+                    const existingExtension = fileName.toLowerCase().split('.').pop();
+                    if (!existingExtension || (isVideo && existingExtension !== 'mp4' && existingExtension !== 'mov' && existingExtension !== 'avi') ||
+                        (!isVideo && !['jpg', 'jpeg', 'png', 'gif'].includes(existingExtension))) {
+                        fileName = `${fileName.split('.')[0]}.${extension}`;
+                    }
+                }
+                
+                console.log('Selected media:', {
+                    uri: asset.uri,
+                    type: asset.type,
+                    fileName: fileName,
+                    fileSize: asset.fileSize,
+                    duration: asset.duration
+                });
                 
                 setSelectedMedia({
                     uri: asset.uri,
                     type: asset.type || 'image',
-                    name: asset.fileName || `media_${Date.now()}.${asset.type === 'video' ? 'mp4' : 'jpg'}`,
+                    name: fileName,
                 });
             }
         } catch (error) {
@@ -204,7 +273,19 @@ export default function CommentsScreen() {
             );
             
             console.log('Added comment response:', response);
-            const addedComment = (response as Comment);
+            
+            // Handle different response structures
+            let addedComment: Comment;
+            if (response.comment) {
+                // Backend returns { comment: Comment }
+                addedComment = response.comment;
+            } else if (response.id) {
+                // Direct comment object
+                addedComment = response as Comment;
+            } else {
+                throw new Error('Invalid response structure from server');
+            }
+            
             setComments([addedComment, ...comments]);
             setNewComment('');
             setSelectedMedia(null);
@@ -237,6 +318,14 @@ export default function CommentsScreen() {
     };
 
     const canEditComment = (comment: Comment): boolean => {
+        console.log('Checking edit permission:', {
+            currentUser: currentUser,
+            commentUserId: comment.user_id,
+            commentId: comment.id,
+            mediaType: comment.media_type,
+            userCanEdit: currentUser && comment.media_type === 'text' && (currentUser.role === 'admin' || currentUser.id === comment.user_id)
+        });
+        
         if (!currentUser) return false;
         
         // Only text comments can be edited
@@ -252,6 +341,13 @@ export default function CommentsScreen() {
     };
 
     const canDeleteComment = (comment: Comment): boolean => {
+        console.log('Checking delete permission:', {
+            currentUser: currentUser,
+            commentUserId: comment.user_id,
+            commentId: comment.id,
+            userCanDelete: currentUser && (currentUser.role === 'admin' || currentUser.id === comment.user_id)
+        });
+        
         if (!currentUser) return false;
         
         // Admin can delete any comment
@@ -358,7 +454,7 @@ export default function CommentsScreen() {
                 <Image
                     source={{ uri: mediaUrl }}
                     style={styles.mediaImage}
-                    resizeMode="cover"
+                    resizeMode="contain"
                 />
             );
         } else if (mediaType === 'video') {
@@ -397,139 +493,118 @@ export default function CommentsScreen() {
         }
     };
 
-    const renderComment = (comment: Comment, level: number = 0) => (
-        <View key={comment.id} style={styles.commentContainer}>
-            {/* Reply indicator for nested comments */}
-            {level > 0 && (
-                <View style={styles.replyIndicator}>
-                    <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
-                    <Text style={styles.replyToText}>
-                        Reply
-                    </Text>
-                </View>
-            )}
-            
-            <View style={styles.commentHeader}>
-                <View style={styles.userInfo}>
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>
-                            {comment.user.name.charAt(0).toUpperCase()}
+    const renderComment = (comment: Comment, level: number = 0) => {
+        // Safety check for comment
+        if (!comment || !comment.id) {
+            console.warn('Invalid comment object:', comment);
+            return null;
+        }
+        
+        return (
+            <View key={comment.id} style={styles.commentContainer}>
+                {/* Reply indicator for nested comments */}
+                {level > 0 && (
+                    <View style={styles.replyIndicator}>
+                        <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
+                        <Text style={styles.replyToText}>
+                            Reply
                         </Text>
                     </View>
-                    <View style={styles.userDetails}>
-                        <Text style={styles.userName}>{comment.user.name}</Text>
-                        <View style={[styles.roleBadge, { backgroundColor: getRoleBackgroundColor(comment.user.role) }]}>
-                            <Text style={[styles.roleText, { color: getRoleColor(comment.user.role) }]}>
-                                {comment.user.role}
+                )}
+                
+                <View style={styles.commentHeader}>
+                    <View style={styles.userInfo}>
+                        <View style={styles.avatar}>
+                            <Text style={styles.avatarText}>
+                                {comment.user?.name?.charAt(0).toUpperCase() || '?'}
                             </Text>
                         </View>
-                    </View>
-                </View>
-                <Text style={styles.timestamp}>
-                    {new Date(comment.created_at).toLocaleString()}
-                </Text>
-            </View>
-
-            {editingComment === comment.id ? (
-                <View style={styles.editContainer}>
-                    <TextInput
-                        style={styles.editInput}
-                        value={editContent}
-                        onChangeText={setEditContent}
-                        multiline
-                        numberOfLines={3}
-                    />
-                    <View style={styles.editActions}>
-                        <TouchableOpacity
-                            style={styles.editButton}
-                            onPress={() => handleSaveEdit(comment.id)}
-                        >
-                            <Text style={styles.saveButtonText}>Save</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.cancelButton}
-                            onPress={handleCancelEdit}
-                        >
-                            <Text style={styles.cancelButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            ) : (
-                <>
-                    {comment.content && <Text style={styles.commentText}>{comment.content}</Text>}
-                    {comment.media_url && comment.media_type && (
-                        <View style={styles.mediaContainer}>
-                            {renderMedia(comment.media_url, comment.media_type)}
+                        <View style={styles.userDetails}>
+                            <Text style={styles.userName}>{comment.user?.name || 'Unknown User'}</Text>
+                            <View style={[styles.roleBadge, { backgroundColor: getRoleBackgroundColor(comment.user?.role || 'client') }]}>
+                                <Text style={[styles.roleText, { color: getRoleColor(comment.user?.role || 'client') }]}>
+                                    {comment.user?.role || 'client'}
+                                </Text>
+                            </View>
                         </View>
-                    )}
-                </>
-            )}
+                    </View>
+                    <Text style={styles.timestamp}>
+                        {comment.created_at ? new Date(comment.created_at).toLocaleString() : 'Unknown time'}
+                    </Text>
+                </View>
 
-            <View style={styles.commentActions}>
-                <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => setReplyingTo(comment.id)}
-                >
-                    <Text style={styles.actionButtonText}>Reply</Text>
-                </TouchableOpacity>
-                {canEditComment(comment) && (
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => handleStartEdit(comment)}
-                    >
-                        <Text style={styles.actionButtonText}>Edit</Text>
-                    </TouchableOpacity>
+                {editingComment === comment.id ? (
+                    <View style={styles.editContainer}>
+                        <TextInput
+                            style={styles.editInput}
+                            value={editContent}
+                            onChangeText={setEditContent}
+                            multiline
+                            numberOfLines={3}
+                        />
+                        <View style={styles.editActions}>
+                            <TouchableOpacity
+                                style={styles.editButton}
+                                onPress={() => handleSaveEdit(comment.id)}
+                            >
+                                <Text style={styles.saveButtonText}>Save</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.cancelButton}
+                                onPress={handleCancelEdit}
+                            >
+                                <Text style={styles.cancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ) : (
+                    <>
+                        {comment.content && <Text style={styles.commentText}>{comment.content}</Text>}
+                        {comment.media_url && comment.media_type && (
+                            <View style={styles.mediaContainer}>
+                                {renderMedia(comment.media_url, comment.media_type)}
+                            </View>
+                        )}
+                    </>
                 )}
-                {canDeleteComment(comment) && (
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => handleDeleteComment(comment.id)}
-                    >
-                        <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>Delete</Text>
-                    </TouchableOpacity>
+
+                <View style={styles.commentActions}>
+                    {/* Only show reply button for levels 0 and 1 (max 2 levels deep) */}
+                    {level < 2 && (
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => setReplyingTo(comment.id)}
+                        >
+                            <Text style={styles.actionButtonText}>Reply</Text>
+                        </TouchableOpacity>
+                    )}
+                    {canEditComment(comment) && (
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleStartEdit(comment)}
+                        >
+                            <Text style={styles.actionButtonText}>Edit</Text>
+                        </TouchableOpacity>
+                    )}
+                    {canDeleteComment(comment) && (
+                        <TouchableOpacity
+                            style={styles.actionButton}
+                            onPress={() => handleDeleteComment(comment.id)}
+                        >
+                            <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>Delete</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+
+                {/* Nested Replies */}
+                {comment.replies && comment.replies.length > 0 && (
+                    <View style={styles.repliesContainer}>
+                        {comment.replies.map(reply => renderComment(reply, level + 1))}
+                    </View>
                 )}
             </View>
-
-            {/* Reply Input */}
-            {replyingTo === comment.id && (
-                <View style={styles.replyInputContainer}>
-                    <TextInput
-                        style={styles.replyInput}
-                        value={replyContent}
-                        onChangeText={setReplyContent}
-                        placeholder="Write a reply..."
-                        multiline
-                        numberOfLines={2}
-                    />
-                    <View style={styles.replyActions}>
-                        <TouchableOpacity
-                            style={styles.replyButton}
-                            onPress={handleReply}
-                            disabled={submitting}
-                        >
-                            <Text style={styles.replyButtonText}>Reply</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.cancelReplyButton}
-                            onPress={() => {
-                                setReplyingTo(null);
-                                setReplyContent('');
-                            }}
-                        >
-                            <Text style={styles.cancelButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            )}
-
-            {/* Nested Replies */}
-            {comment.replies && comment.replies.length > 0 && (
-                <View style={styles.repliesContainer}>
-                    {comment.replies.map(reply => renderComment(reply, level + 1))}
-                </View>
-            )}
-        </View>
-    );
+        );
+    };
 
     if (loading) {
         return (
@@ -555,7 +630,24 @@ export default function CommentsScreen() {
         >
             <SafeAreaView style={{ flex: 1 }}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Comments</Text>
+                    <View style={styles.headerContent}>
+                        <Text style={styles.title}>Comments</Text>
+                        <TouchableOpacity
+                            style={styles.refreshButton}
+                            onPress={handleRefresh}
+                            disabled={refreshing}
+                        >
+                            {refreshing ? (
+                                <ActivityIndicator size="small" color="#007AFF" />
+                            ) : (
+                                <Ionicons 
+                                    name="refresh" 
+                                    size={24} 
+                                    color="#007AFF" 
+                                />
+                            )}
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {programs.length > 0 && (
@@ -585,18 +677,46 @@ export default function CommentsScreen() {
                 
                 <FlatList
                     data={comments}
-                    keyExtractor={(item) => item.id.toString()}
+                    keyExtractor={(item) => item?.id?.toString() || `comment-${Math.random()}`}
                     renderItem={({ item }) => renderComment(item)}
                     contentContainerStyle={styles.commentsList}
                     keyboardShouldPersistTaps="handled"
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                        />
+                    }
                 />
+
+                {/* Reply Indicator */}
+                {replyingTo && (
+                    <View style={styles.replyIndicatorBar}>
+                        <View style={styles.replyIndicatorContent}>
+                            <Ionicons name="arrow-back" size={16} color="#6B7280" />
+                            <Text style={styles.replyIndicatorText}>
+                                Replying to {comments.find(c => c.id === replyingTo)?.user?.name || 'comment'}
+                            </Text>
+                        </View>
+                        <TouchableOpacity
+                            style={styles.cancelReplyButton}
+                            onPress={() => {
+                                setReplyingTo(null);
+                                setReplyContent('');
+                                setSelectedMedia(null);
+                            }}
+                        >
+                            <Text style={styles.cancelReplyText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        value={newComment}
-                        onChangeText={setNewComment}
-                        placeholder="Add a comment..."
+                        value={replyingTo ? replyContent : newComment}
+                        onChangeText={replyingTo ? setReplyContent : setNewComment}
+                        placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
                         multiline
                         onFocus={() => {
                             // Scroll to bottom when input is focused
@@ -612,9 +732,9 @@ export default function CommentsScreen() {
                         <Ionicons name="camera" size={24} color="#007AFF" />
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={[styles.sendButton, (!newComment.trim() && !selectedMedia) && styles.sendButtonDisabled]}
-                        onPress={handleAddComment}
-                        disabled={submitting || (!newComment.trim() && !selectedMedia)}
+                        style={[styles.sendButton, (!(replyingTo ? replyContent : newComment).trim() && !selectedMedia) && styles.sendButtonDisabled]}
+                        onPress={replyingTo ? handleReply : handleAddComment}
+                        disabled={submitting || (!(replyingTo ? replyContent : newComment).trim() && !selectedMedia)}
                     >
                         {submitting ? (
                             <ActivityIndicator size="small" color="#007AFF" />
@@ -668,6 +788,11 @@ const styles = StyleSheet.create({
         padding: 16,
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
+    },
+    headerContent: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     title: {
         fontSize: 24,
@@ -964,5 +1089,39 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontSize: 12,
         fontStyle: 'italic',
+    },
+    replyIndicatorBar: {
+        flexDirection: 'row',
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#eee',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    replyIndicatorContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    replyIndicatorText: {
+        color: '#6B7280',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    cancelReplyText: {
+        color: '#6B7280',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    maxDepthText: {
+        color: '#6B7280',
+        fontSize: 12,
+        fontStyle: 'italic',
+    },
+    refreshButton: {
+        padding: 8,
+    },
+    refreshingIcon: {
+        opacity: 0.5,
     },
 }); 
