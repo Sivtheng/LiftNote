@@ -71,12 +71,12 @@ sudo ufw --force enable
 
 # Create project directory
 print_status "Creating project directory..."
-sudo mkdir -p /var/www/liftnote
-sudo chown $USER:$USER /var/www/liftnote
+sudo mkdir -p /var/www/LiftNote
+sudo chown $USER:$USER /var/www/LiftNote
 
 # Navigate to project directory (repository should already be cloned)
 print_status "Setting up project in existing repository..."
-cd /var/www/liftnote
+cd /var/www/LiftNote
 
 # Copy Nginx configuration
 print_status "Setting up Nginx configuration..."
@@ -93,7 +93,7 @@ cp backend/env.production backend/.env.production
 
 # Set up SSL certificate (you'll need to update the domain)
 print_status "Setting up SSL certificate..."
-sudo certbot --nginx -d api-liftnote.xyz --non-interactive --agree-tos --email sivtheng25@example.com
+sudo certbot --nginx -d api-liftnote.xyz --non-interactive --agree-tos --email your-email@example.com
 
 # Set up automatic SSL renewal
 print_status "Setting up automatic SSL renewal..."
@@ -107,7 +107,7 @@ sudo touch /var/log/nginx/liftnote_error.log
 
 # Set proper permissions
 print_status "Setting proper permissions..."
-sudo chown -R $USER:$USER /var/www/liftnote
+sudo chown -R $USER:$USER /var/www/LiftNote
 sudo chmod +x scripts/deploy.sh
 
 # Start services
