@@ -1,17 +1,18 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Network configuration
-const NETWORK = 'work';
+// Network configuration - Simplified for hosted database setup
+const NETWORK = 'development';
 
 const NETWORK_CONFIGS = {
-    work: 'http://192.168.43.42:8000/api',
-    school: 'http://10.0.4.97:8000/api',
-    home: 'http://192.168.0.101:8000/api'
+    development: 'http://192.168.43.233:8000/api', // Your computer's IP address
+    production: 'https://your-backend-domain.com/api', // Update with your production URL when deployed
 };
 
 // Use environment variable or fallback to network config
 const API_URL = process.env.API_URL || NETWORK_CONFIGS[NETWORK];
+
+console.log('Mobile app connecting to:', API_URL);
 
 const api = axios.create({
     baseURL: API_URL,
@@ -201,8 +202,55 @@ export const commentService = {
         });
         return response.data;
     },
+    addProgramCommentWithMedia: async (programId: string, content: string, media?: {
+        uri: string;
+        type: string;
+        name: string;
+    } | null) => {
+        try {
+            const formData = new FormData();
+            
+            if (content) {
+                formData.append('content', content);
+            }
+            
+            if (media) {
+                const mediaFile = {
+                    uri: media.uri,
+                    type: media.type === 'video' ? 'video/mp4' : 'image/jpeg',
+                    name: media.name,
+                } as any;
+                formData.append('media_file', mediaFile);
+            }
+
+            const response = await api.post(`/programs/${programId}/comments`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            
+            return response.data;
+        } catch (error) {
+            console.error('Error adding comment with media:', error);
+            throw error;
+        }
+    },
+    updateComment: async (programId: string, commentId: string, content: string) => {
+        const response = await api.put(`/programs/${programId}/comments/${commentId}`, {
+            content
+        });
+        return response.data;
+    },
+    deleteComment: async (programId: string, commentId: string) => {
+        const response = await api.delete(`/programs/${programId}/comments/${commentId}`);
+        return response.data;
+    },
     getRecentComments: async (programId: string) => {
         const response = await api.get(`/programs/${programId}/comments`);
+        return response.data;
+    },
+    getCoachComments: async (programId: string) => {
+        const response = await api.get(`/programs/${programId}/comments?role=coach`);
         return response.data;
     },
 };

@@ -16,7 +16,12 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:3000'],
+    'allowed_origins' => [
+        'http://localhost:3000',
+        'http://192.168.43.233:3000',
+        'exp://192.168.43.233:8081', // Expo development server
+        'exp://localhost:8081', // Expo development server (localhost)
+    ],
 
     'allowed_origins_patterns' => [],
 

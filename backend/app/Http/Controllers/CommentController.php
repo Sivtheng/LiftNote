@@ -288,11 +288,18 @@ class CommentController extends Controller
                 return response()->json(['message' => 'Unauthorized'], 403);
             }
 
-            $comments = Comment::where('program_id', $program->id)
+            $query = Comment::where('program_id', $program->id)
                 ->whereNull('parent_id')
-                ->with(['user', 'replies.user'])
-                ->orderBy('created_at', 'desc')
-                ->get();
+                ->with(['user', 'replies.user']);
+
+            // Filter by role if specified
+            if (request()->has('role') && request('role') === 'coach') {
+                $query->whereHas('user', function ($userQuery) {
+                    $userQuery->whereIn('role', ['coach', 'admin']);
+                });
+            }
+
+            $comments = $query->orderBy('created_at', 'desc')->get();
 
             // Manually load nested replies for each comment
             $comments->each(function ($comment) {
@@ -313,7 +320,7 @@ class CommentController extends Controller
     private function loadNestedReplies($comment)
     {
         if ($comment->replies && $comment->replies->count() > 0) {
-            $comment->replies->load('user');
+            $comment->replies->load(['user', 'parent.user']);
             $comment->replies->each(function ($reply) {
                 $this->loadNestedReplies($reply);
             });

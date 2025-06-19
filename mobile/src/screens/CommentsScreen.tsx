@@ -8,9 +8,24 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     SafeAreaView,
+    Image,
+    Alert,
+    Platform,
+    ScrollView,
+    KeyboardAvoidingView,
+    Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { Video, ResizeMode } from 'expo-av';
 import { commentService, programService } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface User {
+    id: number;
+    name: string;
+    role: string;
+}
 
 interface Comment {
     id: number;
@@ -22,10 +37,9 @@ interface Comment {
     parent_id: number | null;
     media_type: string | null;
     media_url: string | null;
-    user: {
-        name: string;
-    };
+    user: User;
     replies: Comment[];
+    parent?: Comment;
 }
 
 interface CommentsResponse {
@@ -51,16 +65,35 @@ interface ProgramsResponse {
     programs: Program[];
 }
 
+interface CurrentUser {
+    id: number;
+    name: string;
+    role: string;
+}
+
 export default function CommentsScreen() {
     const [comments, setComments] = useState<Comment[]>([]);
     const [programs, setPrograms] = useState<Program[]>([]);
     const [selectedProgramId, setSelectedProgramId] = useState<string | null>(null);
     const [newComment, setNewComment] = useState('');
+    const [selectedMedia, setSelectedMedia] = useState<{
+        uri: string;
+        type: string;
+        name: string;
+    } | null>(null);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+    const [editingComment, setEditingComment] = useState<number | null>(null);
+    const [editContent, setEditContent] = useState('');
+    const [replyingTo, setReplyingTo] = useState<number | null>(null);
+    const [replyContent, setReplyContent] = useState('');
 
     useEffect(() => {
         fetchPrograms();
+        requestPermissions();
+        getCurrentUser();
     }, []);
 
     useEffect(() => {
@@ -68,6 +101,26 @@ export default function CommentsScreen() {
             fetchComments();
         }
     }, [selectedProgramId]);
+
+    const getCurrentUser = async () => {
+        try {
+            const userData = await AsyncStorage.getItem('user');
+            if (userData) {
+                setCurrentUser(JSON.parse(userData));
+            }
+        } catch (error) {
+            console.error('Error getting current user:', error);
+        }
+    };
+
+    const requestPermissions = async () => {
+        if (Platform.OS !== 'web') {
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to upload media.');
+            }
+        }
+    };
 
     const fetchPrograms = async () => {
         try {
@@ -102,40 +155,377 @@ export default function CommentsScreen() {
         }
     };
 
+    const pickMedia = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.All,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8,
+                videoMaxDuration: 60, // Limit video to 60 seconds
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                const asset = result.assets[0];
+                
+                // Check file size (10MB limit)
+                if (asset.fileSize && asset.fileSize > 10 * 1024 * 1024) {
+                    Alert.alert('File too large', 'Please select a file smaller than 10MB');
+                    return;
+                }
+                
+                setSelectedMedia({
+                    uri: asset.uri,
+                    type: asset.type || 'image',
+                    name: asset.fileName || `media_${Date.now()}.${asset.type === 'video' ? 'mp4' : 'jpg'}`,
+                });
+            }
+        } catch (error) {
+            console.error('Error picking media:', error);
+            Alert.alert('Error', 'Failed to pick media. Please try again.');
+        }
+    };
+
+    const removeMedia = () => {
+        setSelectedMedia(null);
+    };
+
     const handleAddComment = async () => {
-        if (!newComment.trim() || !selectedProgramId) return;
+        if ((!newComment.trim() && !selectedMedia) || !selectedProgramId) return;
 
         try {
-            console.log('Adding new comment:', newComment);
-            const response = await commentService.addProgramComment(selectedProgramId, newComment);
+            setSubmitting(true);
+            console.log('Adding new comment:', { content: newComment, hasMedia: !!selectedMedia });
+            
+            const response = await commentService.addProgramCommentWithMedia(
+                selectedProgramId, 
+                newComment, 
+                selectedMedia
+            );
+            
             console.log('Added comment response:', response);
             const addedComment = (response as Comment);
             setComments([addedComment, ...comments]);
             setNewComment('');
+            setSelectedMedia(null);
         } catch (err) {
             console.error('Error adding comment:', err);
             setError(err instanceof Error ? err.message : 'Failed to add comment');
+        } finally {
+            setSubmitting(false);
         }
     };
 
-    const renderComment = ({ item }: { item: Comment }) => (
-        <View style={styles.commentContainer}>
-            <Text style={styles.userName}>{item.user.name}</Text>
-            <Text style={styles.commentText}>{item.content}</Text>
-            <Text style={styles.timestamp}>
-                {new Date(item.created_at).toLocaleDateString()}
-            </Text>
-            {item.replies && item.replies.length > 0 && (
-                <View style={styles.repliesContainer}>
-                    {item.replies.map((reply) => (
-                        <View key={reply.id} style={styles.replyContainer}>
-                            <Text style={styles.userName}>{reply.user.name}</Text>
-                            <Text style={styles.commentText}>{reply.content}</Text>
-                            <Text style={styles.timestamp}>
-                                {new Date(reply.created_at).toLocaleDateString()}
+    const handleReply = async () => {
+        if (!replyContent.trim() || !replyingTo || !selectedProgramId) return;
+
+        try {
+            setSubmitting(true);
+            const response = await commentService.addProgramComment(selectedProgramId, replyContent, replyingTo.toString());
+            console.log('Added reply response:', response);
+            
+            // Refresh comments to get the updated structure
+            await fetchComments();
+            setReplyingTo(null);
+            setReplyContent('');
+        } catch (err) {
+            console.error('Error adding reply:', err);
+            setError(err instanceof Error ? err.message : 'Failed to add reply');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const canEditComment = (comment: Comment): boolean => {
+        if (!currentUser) return false;
+        
+        // Only text comments can be edited
+        if (comment.media_type !== 'text') return false;
+        
+        // Admin can edit any text comment
+        if (currentUser.role === 'admin') return true;
+        
+        // User can edit their own text comment
+        if (currentUser.id === comment.user_id) return true;
+        
+        return false;
+    };
+
+    const canDeleteComment = (comment: Comment): boolean => {
+        if (!currentUser) return false;
+        
+        // Admin can delete any comment
+        if (currentUser.role === 'admin') return true;
+        
+        // User can delete their own comment
+        if (currentUser.id === comment.user_id) return true;
+        
+        return false;
+    };
+
+    const handleStartEdit = (comment: Comment) => {
+        setEditingComment(comment.id);
+        setEditContent(comment.content);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingComment(null);
+        setEditContent('');
+    };
+
+    const handleSaveEdit = async (commentId: number) => {
+        if (!editContent.trim() || !selectedProgramId) return;
+
+        try {
+            setSubmitting(true);
+            const response = await commentService.updateComment(selectedProgramId, commentId.toString(), editContent);
+            console.log('Updated comment response:', response);
+            
+            // Update comment in state
+            const updateCommentInState = (comments: Comment[], targetId: number, updatedComment: Comment): Comment[] => {
+                return comments.map(comment => {
+                    if (comment.id === targetId) {
+                        return {
+                            ...comment,
+                            content: updatedComment.content,
+                            updated_at: updatedComment.updated_at
+                        };
+                    }
+                    if (comment.replies && comment.replies.length > 0) {
+                        return {
+                            ...comment,
+                            replies: updateCommentInState(comment.replies, targetId, updatedComment)
+                        };
+                    }
+                    return comment;
+                });
+            };
+
+            setComments(prev => updateCommentInState(prev, commentId, response.comment));
+            setEditingComment(null);
+            setEditContent('');
+        } catch (err) {
+            console.error('Error updating comment:', err);
+            setError(err instanceof Error ? err.message : 'Failed to update comment');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleDeleteComment = async (commentId: number) => {
+        Alert.alert(
+            'Delete Comment',
+            'Are you sure you want to delete this comment?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setSubmitting(true);
+                            await commentService.deleteComment(selectedProgramId!, commentId.toString());
+                            
+                            // Remove comment from state
+                            const removeCommentFromState = (comments: Comment[], targetId: number): Comment[] => {
+                                return comments.filter(comment => {
+                                    if (comment.id === targetId) {
+                                        return false;
+                                    }
+                                    if (comment.replies && comment.replies.length > 0) {
+                                        comment.replies = removeCommentFromState(comment.replies, targetId);
+                                    }
+                                    return true;
+                                });
+                            };
+
+                            setComments(prev => removeCommentFromState(prev, commentId));
+                        } catch (err) {
+                            console.error('Error deleting comment:', err);
+                            setError(err instanceof Error ? err.message : 'Failed to delete comment');
+                        } finally {
+                            setSubmitting(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const renderMedia = (mediaUrl: string, mediaType: string) => {
+        if (mediaType === 'image') {
+            return (
+                <Image
+                    source={{ uri: mediaUrl }}
+                    style={styles.mediaImage}
+                    resizeMode="cover"
+                />
+            );
+        } else if (mediaType === 'video') {
+            return (
+                <Video
+                    source={{ uri: mediaUrl }}
+                    style={styles.mediaVideo}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    isLooping={false}
+                />
+            );
+        }
+        return null;
+    };
+
+    const getRoleColor = (role: string) => {
+        switch (role) {
+            case 'coach':
+                return '#3B82F6';
+            case 'admin':
+                return '#EF4444';
+            default:
+                return '#6B7280';
+        }
+    };
+
+    const getRoleBackgroundColor = (role: string) => {
+        switch (role) {
+            case 'coach':
+                return '#DBEAFE';
+            case 'admin':
+                return '#FEE2E2';
+            default:
+                return '#F3F4F6';
+        }
+    };
+
+    const renderComment = (comment: Comment, level: number = 0) => (
+        <View key={comment.id} style={styles.commentContainer}>
+            {/* Reply indicator for nested comments */}
+            {level > 0 && (
+                <View style={styles.replyIndicator}>
+                    <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
+                    <Text style={styles.replyToText}>
+                        Reply
+                    </Text>
+                </View>
+            )}
+            
+            <View style={styles.commentHeader}>
+                <View style={styles.userInfo}>
+                    <View style={styles.avatar}>
+                        <Text style={styles.avatarText}>
+                            {comment.user.name.charAt(0).toUpperCase()}
+                        </Text>
+                    </View>
+                    <View style={styles.userDetails}>
+                        <Text style={styles.userName}>{comment.user.name}</Text>
+                        <View style={[styles.roleBadge, { backgroundColor: getRoleBackgroundColor(comment.user.role) }]}>
+                            <Text style={[styles.roleText, { color: getRoleColor(comment.user.role) }]}>
+                                {comment.user.role}
                             </Text>
                         </View>
-                    ))}
+                    </View>
+                </View>
+                <Text style={styles.timestamp}>
+                    {new Date(comment.created_at).toLocaleString()}
+                </Text>
+            </View>
+
+            {editingComment === comment.id ? (
+                <View style={styles.editContainer}>
+                    <TextInput
+                        style={styles.editInput}
+                        value={editContent}
+                        onChangeText={setEditContent}
+                        multiline
+                        numberOfLines={3}
+                    />
+                    <View style={styles.editActions}>
+                        <TouchableOpacity
+                            style={styles.editButton}
+                            onPress={() => handleSaveEdit(comment.id)}
+                        >
+                            <Text style={styles.saveButtonText}>Save</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.cancelButton}
+                            onPress={handleCancelEdit}
+                        >
+                            <Text style={styles.cancelButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : (
+                <>
+                    {comment.content && <Text style={styles.commentText}>{comment.content}</Text>}
+                    {comment.media_url && comment.media_type && (
+                        <View style={styles.mediaContainer}>
+                            {renderMedia(comment.media_url, comment.media_type)}
+                        </View>
+                    )}
+                </>
+            )}
+
+            <View style={styles.commentActions}>
+                <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => setReplyingTo(comment.id)}
+                >
+                    <Text style={styles.actionButtonText}>Reply</Text>
+                </TouchableOpacity>
+                {canEditComment(comment) && (
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => handleStartEdit(comment)}
+                    >
+                        <Text style={styles.actionButtonText}>Edit</Text>
+                    </TouchableOpacity>
+                )}
+                {canDeleteComment(comment) && (
+                    <TouchableOpacity
+                        style={styles.actionButton}
+                        onPress={() => handleDeleteComment(comment.id)}
+                    >
+                        <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>Delete</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            {/* Reply Input */}
+            {replyingTo === comment.id && (
+                <View style={styles.replyInputContainer}>
+                    <TextInput
+                        style={styles.replyInput}
+                        value={replyContent}
+                        onChangeText={setReplyContent}
+                        placeholder="Write a reply..."
+                        multiline
+                        numberOfLines={2}
+                    />
+                    <View style={styles.replyActions}>
+                        <TouchableOpacity
+                            style={styles.replyButton}
+                            onPress={handleReply}
+                            disabled={submitting}
+                        >
+                            <Text style={styles.replyButtonText}>Reply</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.cancelReplyButton}
+                            onPress={() => {
+                                setReplyingTo(null);
+                                setReplyContent('');
+                            }}
+                        >
+                            <Text style={styles.cancelButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
+
+            {/* Nested Replies */}
+            {comment.replies && comment.replies.length > 0 && (
+                <View style={styles.repliesContainer}>
+                    {comment.replies.map(reply => renderComment(reply, level + 1))}
                 </View>
             )}
         </View>
@@ -158,62 +548,109 @@ export default function CommentsScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Comments</Text>
-            </View>
-
-            {programs.length > 0 && (
-                <View style={styles.programSelector}>
-                    <Text style={styles.programLabel}>Select Program:</Text>
-                    <FlatList
-                        horizontal
-                        data={programs}
-                        keyExtractor={(item) => item.id.toString()}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={[
-                                    styles.programButton,
-                                    selectedProgramId === item.id.toString() && styles.selectedProgramButton
-                                ]}
-                                onPress={() => setSelectedProgramId(item.id.toString())}
-                            >
-                                <Text style={[
-                                    styles.programButtonText,
-                                    selectedProgramId === item.id.toString() && styles.selectedProgramButtonText
-                                ]}>
-                                    {item.title}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        contentContainerStyle={styles.programList}
-                    />
+        <KeyboardAvoidingView 
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+            <SafeAreaView style={{ flex: 1 }}>
+                <View style={styles.header}>
+                    <Text style={styles.title}>Comments</Text>
                 </View>
-            )}
-            
-            <FlatList
-                data={comments}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={renderComment}
-                contentContainerStyle={styles.commentsList}
-            />
 
-            <View style={styles.inputContainer}>
-                <TextInput
-                    style={styles.input}
-                    value={newComment}
-                    onChangeText={setNewComment}
-                    placeholder="Add a comment..."
-                    multiline
+                {programs.length > 0 && (
+                    <View style={styles.programSelector}>
+                        <Text style={styles.programLabel}>Select Program:</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                            {programs.map((program) => (
+                                <TouchableOpacity
+                                    key={program.id}
+                                    style={[
+                                        styles.programButton,
+                                        selectedProgramId === program.id.toString() && styles.selectedProgramButton
+                                    ]}
+                                    onPress={() => setSelectedProgramId(program.id.toString())}
+                                >
+                                    <Text style={[
+                                        styles.programButtonText,
+                                        selectedProgramId === program.id.toString() && styles.selectedProgramButtonText
+                                    ]}>
+                                        {program.title}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+                
+                <FlatList
+                    data={comments}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => renderComment(item)}
+                    contentContainerStyle={styles.commentsList}
+                    keyboardShouldPersistTaps="handled"
                 />
-                <TouchableOpacity
-                    style={styles.sendButton}
-                    onPress={handleAddComment}
-                >
-                    <Ionicons name="send" size={24} color="#007AFF" />
-                </TouchableOpacity>
-            </View>
-        </SafeAreaView>
+
+                <View style={styles.inputContainer}>
+                    <TextInput
+                        style={styles.input}
+                        value={newComment}
+                        onChangeText={setNewComment}
+                        placeholder="Add a comment..."
+                        multiline
+                        onFocus={() => {
+                            // Scroll to bottom when input is focused
+                            setTimeout(() => {
+                                // This will be handled by the FlatList
+                            }, 100);
+                        }}
+                    />
+                    <TouchableOpacity
+                        style={styles.mediaButton}
+                        onPress={pickMedia}
+                    >
+                        <Ionicons name="camera" size={24} color="#007AFF" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.sendButton, (!newComment.trim() && !selectedMedia) && styles.sendButtonDisabled]}
+                        onPress={handleAddComment}
+                        disabled={submitting || (!newComment.trim() && !selectedMedia)}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator size="small" color="#007AFF" />
+                        ) : (
+                            <Ionicons name="send" size={24} color="#007AFF" />
+                        )}
+                    </TouchableOpacity>
+                </View>
+
+                {/* Media Preview */}
+                {selectedMedia && (
+                    <View style={styles.mediaPreviewContainer}>
+                        <View style={styles.mediaPreview}>
+                            {selectedMedia.type === 'image' ? (
+                                <Image
+                                    source={{ uri: selectedMedia.uri }}
+                                    style={styles.mediaPreviewImage}
+                                    resizeMode="cover"
+                                />
+                            ) : (
+                                <View style={styles.mediaPreviewVideo}>
+                                    <Ionicons name="play-circle" size={32} color="#007AFF" />
+                                    <Text style={styles.mediaPreviewText}>Video Selected</Text>
+                                </View>
+                            )}
+                        </View>
+                        <TouchableOpacity
+                            style={styles.removeMediaButton}
+                            onPress={removeMedia}
+                        >
+                            <Ionicons name="close-circle" size={24} color="#FF3B30" />
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </SafeAreaView>
+        </KeyboardAvoidingView>
     );
 }
 
@@ -270,34 +707,185 @@ const styles = StyleSheet.create({
     },
     commentContainer: {
         backgroundColor: '#f8f8f8',
-        padding: 12,
-        borderRadius: 8,
+        padding: 16,
+        borderRadius: 12,
         marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    commentHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 8,
+    },
+    userInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    avatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#E5E7EB',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    avatarText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#374151',
+    },
+    userDetails: {
+        flex: 1,
     },
     userName: {
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
         marginBottom: 4,
     },
-    commentText: {
-        fontSize: 16,
-        marginBottom: 4,
+    roleBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        alignSelf: 'flex-start',
+    },
+    roleText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     timestamp: {
         fontSize: 12,
-        color: '#666',
+        color: '#6B7280',
+        textAlign: 'right',
+    },
+    commentText: {
+        fontSize: 16,
+        color: '#374151',
+        lineHeight: 22,
+        marginBottom: 8,
+    },
+    mediaContainer: {
+        marginTop: 8,
+        marginBottom: 8,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    mediaImage: {
+        width: '100%',
+        height: 200,
+        borderRadius: 8,
+    },
+    mediaVideo: {
+        width: '100%',
+        height: 200,
+        borderRadius: 8,
+    },
+    editContainer: {
+        marginBottom: 8,
+    },
+    editInput: {
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        minHeight: 80,
+        marginBottom: 8,
+    },
+    editActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+    },
+    editButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: '#10B981',
+        borderRadius: 6,
+    },
+    saveButtonText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    cancelButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 6,
+    },
+    cancelButtonText: {
+        color: '#6B7280',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    commentActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 12,
+        gap: 16,
+    },
+    actionButton: {
+        paddingVertical: 4,
+    },
+    actionButtonText: {
+        color: '#3B82F6',
+        fontWeight: '500',
+        fontSize: 14,
+    },
+    replyInputContainer: {
+        marginTop: 12,
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    replyInput: {
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 6,
+        padding: 8,
+        fontSize: 14,
+        minHeight: 60,
+        marginBottom: 8,
+    },
+    replyActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 12,
+    },
+    replyButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: '#3B82F6',
+        borderRadius: 6,
+    },
+    replyButtonText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    cancelReplyButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 6,
     },
     repliesContainer: {
-        marginTop: 8,
-        marginLeft: 16,
-        borderLeftWidth: 2,
-        borderLeftColor: '#ddd',
-        paddingLeft: 8,
-    },
-    replyContainer: {
-        backgroundColor: '#fff',
-        padding: 8,
-        borderRadius: 6,
-        marginBottom: 8,
+        marginTop: 12,
     },
     inputContainer: {
         flexDirection: 'row',
@@ -305,6 +893,7 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: '#eee',
         alignItems: 'center',
+        backgroundColor: '#fff',
     },
     input: {
         flex: 1,
@@ -314,12 +903,66 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         marginRight: 8,
         maxHeight: 100,
+        fontSize: 16,
+    },
+    mediaButton: {
+        padding: 8,
+        marginRight: 8,
     },
     sendButton: {
         padding: 8,
     },
+    sendButtonDisabled: {
+        opacity: 0.5,
+    },
+    mediaPreviewContainer: {
+        flexDirection: 'row',
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#eee',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    mediaPreview: {
+        flex: 1,
+        height: 80,
+        borderRadius: 8,
+        overflow: 'hidden',
+        backgroundColor: '#f0f0f0',
+    },
+    mediaPreviewImage: {
+        width: '100%',
+        height: '100%',
+    },
+    mediaPreviewVideo: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    mediaPreviewText: {
+        color: '#007AFF',
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    removeMediaButton: {
+        padding: 8,
+        marginLeft: 8,
+    },
     errorText: {
-        color: 'red',
+        color: '#EF4444',
         textAlign: 'center',
+        fontSize: 16,
+    },
+    replyIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+        paddingHorizontal: 4,
+    },
+    replyToText: {
+        color: '#6B7280',
+        fontSize: 12,
+        fontStyle: 'italic',
     },
 }); 

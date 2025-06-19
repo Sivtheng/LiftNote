@@ -85,7 +85,7 @@ export default function HomeScreen() {
             setCompletionPercentage(completion);
 
             // Fetch comments for this program
-            const commentsData = await commentService.getRecentComments(program.id.toString());
+            const commentsData = await commentService.getCoachComments(program.id.toString());
 
             // Transform comments data to match our expected format
             if (commentsData && commentsData.comments) {
@@ -166,7 +166,7 @@ export default function HomeScreen() {
 
                 <View style={styles.card}>
                     <View style={styles.cardHeader}>
-                        <Text style={styles.cardTitle}>Recent Comments</Text>
+                        <Text style={styles.cardTitle}>Recent Coach Comments</Text>
                         <TouchableOpacity 
                             onPress={() => navigation.navigate('Comments', {
                                 programId: currentProgram?.id.toString(),
@@ -195,7 +195,7 @@ export default function HomeScreen() {
                             </View>
                         ))
                     ) : (
-                        <Text style={styles.noCommentsText}>No recent comments</Text>
+                        <Text style={styles.noCommentsText}>No recent coach comments</Text>
                     )}
                 </View>
             </ScrollView>
