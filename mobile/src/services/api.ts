@@ -208,14 +208,14 @@ export const commentService = {
         name: string;
     } | null, parentId?: string) => {
         try {
-            const requestData: any = {};
+            const formData = new FormData();
             
             if (content) {
-                requestData.content = content;
+                formData.append('content', content);
             }
             
             if (parentId) {
-                requestData.parent_id = parentId;
+                formData.append('parent_id', parentId);
             }
             
             if (media) {
@@ -250,60 +250,57 @@ export const commentService = {
                     }
                 }
                 
-                console.log('Starting base64 conversion for:', media.uri);
+                console.log('Preparing FormData upload for:', media.uri);
                 
-                // For React Native, we'll use FileReader which should be available
-                try {
-                    // Use fetch to get the file as a blob, then convert to base64
-                    const response = await fetch(media.uri);
-                    console.log('Fetch response received');
-                    
-                    const blob = await response.blob();
-                    console.log('Blob created, size:', blob.size);
-                    
-                    // Convert blob to base64 using FileReader
-                    const base64Data = await new Promise<string>((resolve, reject) => {
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                            const result = reader.result as string;
-                            // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
-                            const base64 = result.split(',')[1];
-                            console.log('Base64 conversion completed, length:', base64.length);
-                            resolve(base64);
-                        };
-                        reader.onerror = () => {
-                            reject(new Error('FileReader failed'));
-                        };
-                        reader.readAsDataURL(blob);
-                    });
-                    
-                    requestData.media_file = {
-                        data: base64Data,
-                        type: mimeType,
-                        name: media.name,
-                    };
-                    
-                    console.log('Sending media data as base64:', {
-                        type: mimeType,
-                        name: media.name,
-                        dataLength: base64Data.length
-                    });
-                } catch (error: any) {
-                    console.error('Error converting file to base64:', error);
-                    throw new Error('Failed to convert file to base64: ' + error.message);
-                }
+                // Create file object for FormData
+                const fileData = {
+                    uri: media.uri,
+                    type: mimeType,
+                    name: media.name,
+                };
+                
+                formData.append('media_file', fileData as any);
+                
+                console.log('FormData prepared:', {
+                    hasContent: !!content,
+                    hasMedia: !!media,
+                    hasParentId: !!parentId,
+                    parentId: parentId,
+                    mediaType: mimeType,
+                    mediaName: media.name
+                });
             }
 
-            console.log('Sending request data:', {
-                hasContent: !!content,
-                hasMedia: !!media,
-                hasParentId: !!parentId,
-                parentId: parentId,
-                mediaType: media?.type,
-                mediaName: media?.name
+            // Use a separate axios instance for FormData to avoid JSON headers
+            const formDataApi = axios.create({
+                baseURL: API_URL,
+                headers: {
+                    'Accept': 'application/json',
+                    // Don't set Content-Type for FormData - let the browser set it with boundary
+                },
             });
 
-            const response = await api.post(`/programs/${programId}/comments`, requestData);
+            // Add token to FormData requests
+            formDataApi.interceptors.request.use(
+                async (config) => {
+                    try {
+                        const token = await AsyncStorage.getItem('token');
+                        if (token) {
+                            config.headers.Authorization = `Bearer ${token}`;
+                        }
+                        return config;
+                    } catch (error) {
+                        console.error('Error getting token for FormData:', error);
+                        return config;
+                    }
+                },
+                (error) => {
+                    console.error('FormData request interceptor error:', error);
+                    return Promise.reject(error);
+                }
+            );
+
+            const response = await formDataApi.post(`/programs/${programId}/comments`, formData);
             
             return response.data;
         } catch (error: any) {

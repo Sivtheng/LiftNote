@@ -83,8 +83,24 @@ class CommentController extends Controller
             
             // Handle both base64 file upload from React Native and regular file uploads from web
             if ($request->has('media_file') || $request->hasFile('media_file')) {
-                if ($request->has('media_file')) {
+                if ($request->hasFile('media_file')) {
+                    // Handle regular file upload (web FormData)
+                    $file = $request->file('media_file');
+                    $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
+                    $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
+                    \Log::info('Media file uploaded via FormData', ['media_url' => $mediaUrl]);
+                } else if ($request->has('media_file')) {
+                    // Handle base64 file upload from React Native
                     $mediaData = $request->input('media_file');
+                    
+                    // Add null check to prevent array_keys error
+                    if ($mediaData === null) {
+                        return response()->json([
+                            'message' => 'Invalid media file format',
+                            'errors' => ['media_file' => ['The media file field must be a valid file.']]
+                        ], 422);
+                    }
+                    
                     \Log::info('Received media data:', array_keys($mediaData));
                     
                     // Check if it's base64 format (has data, type, name)
@@ -141,12 +157,6 @@ class CommentController extends Controller
                             'errors' => ['media_file' => ['The media file field must be a valid file.']]
                         ], 422);
                     }
-                } else if ($request->hasFile('media_file')) {
-                    // Handle regular file upload (web)
-                    $file = $request->file('media_file');
-                    $mediaType = Str::startsWith($file->getMimeType(), 'image/') ? 'image' : 'video';
-                    $mediaUrl = $this->spacesService->uploadFile($file, 'comments');
-                    \Log::info('Media file uploaded', ['media_url' => $mediaUrl]);
                 }
             }
 

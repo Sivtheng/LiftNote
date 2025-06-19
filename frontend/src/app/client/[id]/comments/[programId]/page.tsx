@@ -166,7 +166,11 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
 
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newComment.content.trim() && !selectedFile) return;
+
+        if (!newComment.content.trim() && !selectedFile) {
+            setError('Please enter a comment or select a file');
+            return;
+        }
 
         try {
             setIsSubmitting(true);
@@ -184,48 +188,33 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 programId: programId
             });
 
-            // Prepare request data
-            const requestData: any = {
-                content: newComment.content,
-            };
-
-            if (newComment.parent_id) {
-                requestData.parent_id = newComment.parent_id;
-            }
-
-            // Convert file to base64 if selected
-            if (selectedFile) {
-                const base64Data = await new Promise<string>((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const result = reader.result as string;
-                        // Remove the data URL prefix (e.g., "data:image/jpeg;base64,")
-                        const base64 = result.split(',')[1];
-                        resolve(base64);
-                    };
-                    reader.onerror = reject;
-                    reader.readAsDataURL(selectedFile);
-                });
-
-                requestData.media_file = {
-                    data: base64Data,
-                    type: selectedFile.type,
-                    name: selectedFile.name
-                };
-            }
-
             const url = `${API_URL}/programs/${programId}/comments`;
             console.log('Making request to:', url);
+
+            // Use FormData for better performance (no base64 conversion)
+            const formData = new FormData();
+            
+            if (newComment.content) {
+                formData.append('content', newComment.content);
+            }
+            
+            if (newComment.parent_id) {
+                formData.append('parent_id', newComment.parent_id.toString());
+            }
+            
+            if (selectedFile) {
+                formData.append('media_file', selectedFile);
+            }
 
             const response = await fetch(url, {
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
                     'Authorization': `Bearer ${token}`
+                    // Don't set Content-Type - let the browser set it with boundary for FormData
                 },
-                body: JSON.stringify(requestData)
+                body: formData
             });
 
             console.log('Response status:', response.status);

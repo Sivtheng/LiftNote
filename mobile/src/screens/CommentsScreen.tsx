@@ -86,6 +86,7 @@ export default function CommentsScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [uploadingMedia, setUploadingMedia] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
     const [editingComment, setEditingComment] = useState<number | null>(null);
@@ -280,6 +281,9 @@ export default function CommentsScreen() {
 
         try {
             setSubmitting(true);
+            if (selectedMedia) {
+                setUploadingMedia(true);
+            }
             console.log('Adding new comment:', { content: newComment, hasMedia: !!selectedMedia });
             
             const response = await commentService.addProgramCommentWithMedia(
@@ -310,6 +314,7 @@ export default function CommentsScreen() {
             setError(err instanceof Error ? err.message : 'Failed to add comment');
         } finally {
             setSubmitting(false);
+            setUploadingMedia(false);
         }
     };
 
@@ -318,6 +323,9 @@ export default function CommentsScreen() {
 
         try {
             setSubmitting(true);
+            if (replyMedia) {
+                setUploadingMedia(true);
+            }
             const response = await commentService.addProgramCommentWithMedia(
                 selectedProgramId, 
                 replyContent, 
@@ -336,6 +344,7 @@ export default function CommentsScreen() {
             setError(err instanceof Error ? err.message : 'Failed to add reply');
         } finally {
             setSubmitting(false);
+            setUploadingMedia(false);
         }
     };
 
@@ -760,6 +769,11 @@ export default function CommentsScreen() {
                     >
                         {submitting ? (
                             <ActivityIndicator size="small" color="#007AFF" />
+                        ) : uploadingMedia ? (
+                            <View style={{ alignItems: 'center' }}>
+                                <ActivityIndicator size="small" color="#007AFF" />
+                                <Text style={styles.uploadText}>Uploading...</Text>
+                            </View>
                         ) : (
                             <Ionicons name="send" size={24} color="#007AFF" />
                         )}
@@ -1144,5 +1158,10 @@ const styles = StyleSheet.create({
     },
     refreshingIcon: {
         opacity: 0.5,
+    },
+    uploadText: {
+        fontSize: 10,
+        color: '#007AFF',
+        marginTop: 2,
     },
 }); 
