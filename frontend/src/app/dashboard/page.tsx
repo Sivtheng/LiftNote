@@ -121,6 +121,30 @@ export default function DashboardPage() {
                                                         </p>
                                                     </div>
                                                     <p className="mt-1 text-gray-700">{comment.content}</p>
+                                                    {comment.media_type && comment.media_url && (
+                                                        <div className="mt-2">
+                                                            {comment.media_type === 'image' ? (
+                                                                <img 
+                                                                    src={comment.media_url} 
+                                                                    alt="Comment media" 
+                                                                    className="max-w-xs max-h-48 rounded-lg object-contain"
+                                                                />
+                                                            ) : comment.media_type === 'video' ? (
+                                                                <video 
+                                                                    src={comment.media_url} 
+                                                                    controls 
+                                                                    className="max-w-xs max-h-48 rounded-lg"
+                                                                >
+                                                                    Your browser does not support the video tag.
+                                                                </video>
+                                                            ) : null}
+                                                        </div>
+                                                    )}
+                                                    {!comment.content && comment.media_type && comment.media_url && (
+                                                        <p className="mt-1 text-gray-500 italic">
+                                                            {comment.media_type === 'image' ? '📷 Image' : '🎥 Video'}
+                                                        </p>
+                                                    )}
                                                     <button
                                                         onClick={() => router.push(`/client/${comment.program.client_id}/comments/${comment.program_id}`)}
                                                         className="mt-2 text-sm text-indigo-600 hover:text-indigo-900"

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Video, ResizeMode } from 'expo-av';
 import { programService, commentService, authService } from '../services/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,6 +20,8 @@ interface Comment {
         role: string; // 'client' or 'coach'
     };
     created_at: string;
+    media_type?: string | null;
+    media_url?: string | null;
 }
 
 interface TransformedComment {
@@ -26,6 +29,8 @@ interface TransformedComment {
     text: string;
     isCoach: boolean;
     createdAt: Date;
+    mediaType?: string | null;
+    mediaUrl?: string | null;
 }
 
 export default function HomeScreen() {
@@ -39,6 +44,7 @@ export default function HomeScreen() {
     const [error, setError] = useState<string | null>(null);
     const [currentProgram, setCurrentProgram] = useState<any>(null);
     const navigation = useNavigation<NavigationProp>();
+    const [refreshing, setRefreshing] = useState(false);
 
     useFocusEffect(
         React.useCallback(() => {
@@ -94,7 +100,9 @@ export default function HomeScreen() {
                         author: comment.user?.name || 'Anonymous',
                         text: comment.content,
                         isCoach: comment.user?.role === 'coach',
-                        createdAt: new Date(comment.created_at)
+                        createdAt: new Date(comment.created_at),
+                        mediaType: comment.media_type,
+                        mediaUrl: comment.media_url
                     }))
                     .sort((a: TransformedComment, b: TransformedComment) => b.createdAt.getTime() - a.createdAt.getTime()) // Sort by newest first
                     .slice(0, 5); // Limit to 5 comments
@@ -110,6 +118,35 @@ export default function HomeScreen() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchData();
+        setRefreshing(false);
+    };
+
+    const renderMedia = (mediaUrl: string, mediaType: string) => {
+        if (mediaType === 'image') {
+            return (
+                <Image
+                    source={{ uri: mediaUrl }}
+                    style={styles.commentMedia}
+                    resizeMode="contain"
+                />
+            );
+        } else if (mediaType === 'video') {
+            return (
+                <Video
+                    source={{ uri: mediaUrl }}
+                    style={styles.commentMedia}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    isLooping={false}
+                />
+            );
+        }
+        return null;
     };
 
     if (loading) {
@@ -139,29 +176,18 @@ export default function HomeScreen() {
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollViewContent}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={["#007AFF"]}
+                        tintColor="#007AFF"
+                    />
+                }
             >
                 <View style={styles.headerContent}>
                     <Text style={styles.greeting}>Hello, {clientName}</Text>
                     <Text style={styles.subtitle}>Ready to get your workout in for the day?</Text>
-                </View>
-
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Current Progress</Text>
-                    <Text style={styles.cardText}>{currentWeek} - {currentDay}</Text>
-                    <TouchableOpacity 
-                        style={styles.startButton}
-                        onPress={() => navigation.navigate('DailyExercises')}
-                    >
-                        <Text style={styles.startButtonText}>Start Workout</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>{programName}</Text>
-                    <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
-                    </View>
-                    <Text style={styles.cardText}>{completionPercentage}% Complete</Text>
                 </View>
 
                 <View style={styles.card}>
@@ -191,12 +217,41 @@ export default function HomeScreen() {
                                         {new Date(comment.createdAt).toLocaleDateString()}
                                     </Text>
                                 </View>
-                                <Text style={styles.commentText}>{comment.text}</Text>
+                                {comment.text && <Text style={styles.commentText}>{comment.text}</Text>}
+                                {comment.mediaType && comment.mediaUrl && (
+                                    <View style={styles.mediaContainer}>
+                                        {renderMedia(comment.mediaUrl, comment.mediaType)}
+                                    </View>
+                                )}
+                                {!comment.text && comment.mediaType && comment.mediaUrl && (
+                                    <Text style={styles.mediaOnlyText}>
+                                        {comment.mediaType === 'image' ? '📷 Image' : '🎥 Video'}
+                                    </Text>
+                                )}
                             </View>
                         ))
                     ) : (
                         <Text style={styles.noCommentsText}>No recent coach comments</Text>
                     )}
+                </View>
+
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Current Progress</Text>
+                    <Text style={styles.cardText}>{currentWeek} - {currentDay}</Text>
+                    <TouchableOpacity 
+                        style={styles.startButton}
+                        onPress={() => navigation.navigate('DailyExercises')}
+                    >
+                        <Text style={styles.startButtonText}>Start Workout</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>{programName}</Text>
+                    <View style={styles.progressBar}>
+                        <View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
+                    </View>
+                    <Text style={styles.cardText}>{completionPercentage}% Complete</Text>
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -344,5 +399,23 @@ const styles = StyleSheet.create({
         color: '#007AFF',
         fontSize: 14,
         fontWeight: '600',
+    },
+    commentMedia: {
+        width: 200,
+        height: 150,
+        marginTop: 10,
+        borderRadius: 8,
+        backgroundColor: '#f0f0f0',
+    },
+    mediaContainer: {
+        marginTop: 10,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    mediaOnlyText: {
+        color: '#666',
+        fontStyle: 'italic',
+        fontSize: 14,
+        marginTop: 5,
     },
 }); 
