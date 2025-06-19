@@ -12,6 +12,15 @@ use Illuminate\Support\Facades\Storage;
 
 require __DIR__.'/api.php';
 
+// Health check endpoint for deployment
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'healthy',
+        'timestamp' => now()->toISOString(),
+        'version' => '1.0.0'
+    ]);
+});
+
 // Guest routes
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', function () {

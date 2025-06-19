@@ -8,6 +8,7 @@ use App\Http\Controllers\ProgressLogController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\ExerciseController;
 use App\Http\Controllers\ProgramBuilderController;
+use Illuminate\Http\Request;
 
 // Public Auth Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -146,4 +147,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Recent comments route
     Route::get('/comments/recent', [CommentController::class, 'recent']);
+});
+
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});
+
+// Health check endpoint for deployment
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'healthy',
+        'timestamp' => now()->toISOString(),
+        'version' => '1.0.0'
+    ]);
 });

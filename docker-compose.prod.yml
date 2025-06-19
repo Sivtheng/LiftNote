@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: liftnote_backend_prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:80"
+    volumes:
+      - ./backend/storage:/var/www/html/storage
+      - ./backend/bootstrap/cache:/var/www/html/bootstrap/cache
+    env_file:
+      - ./backend/env.production
+    networks:
+      - liftnote_prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  liftnote_prod:
+    driver: bridge 
