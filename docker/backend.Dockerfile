@@ -51,6 +51,9 @@ RUN composer install --no-scripts
 # Copy the rest of the application
 COPY ./backend .
 
+# Copy environment file for build
+COPY ./backend/env.production .env
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && find /var/www/html -type f -exec chmod 644 {} \; \
@@ -60,6 +63,9 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 /var/www/html/public/css \
     && chmod -R 775 /var/www/html/storage/certs \
     && chmod -R 775 /var/www/html/vendor
+
+# Generate APP_KEY if not set
+RUN php artisan key:generate --no-interaction || echo "APP_KEY already set"
 
 # Generate optimized autoload files and run post-install scripts
 RUN composer dump-autoload --optimize \
