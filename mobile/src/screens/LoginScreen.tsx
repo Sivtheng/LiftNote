@@ -16,6 +16,8 @@ export default function LoginScreen({ navigation }: any) {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [loginLoading, setLoginLoading] = useState(false);
+    const [forgotLoading, setForgotLoading] = useState(false);
 
     const handleLogin = async () => {
         if (!email || !password) {
@@ -24,7 +26,7 @@ export default function LoginScreen({ navigation }: any) {
         }
 
         try {
-            setLoading(true);
+            setLoginLoading(true);
             const response = await authService.login(email, password);
             
             // Check questionnaire status
@@ -48,7 +50,7 @@ export default function LoginScreen({ navigation }: any) {
                 error.response?.data?.message || 'Please check your credentials and try again'
             );
         } finally {
-            setLoading(false);
+            setLoginLoading(false);
         }
     };
 
@@ -59,7 +61,7 @@ export default function LoginScreen({ navigation }: any) {
         }
 
         try {
-            setLoading(true);
+            setForgotLoading(true);
             console.log('Sending password reset request for email:', email);
             const response = await authService.requestPasswordReset(email);
             console.log('Password reset response:', response);
@@ -75,7 +77,7 @@ export default function LoginScreen({ navigation }: any) {
                 error.response?.data?.message || 'Failed to send password reset email'
             );
         } finally {
-            setLoading(false);
+            setForgotLoading(false);
         }
     };
 
@@ -119,17 +121,18 @@ export default function LoginScreen({ navigation }: any) {
                 <TouchableOpacity
                     style={styles.forgotPasswordButton}
                     onPress={handleForgotPassword}
+                    disabled={loginLoading || forgotLoading}
                 >
                     <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.button, loading && styles.buttonDisabled]}
+                    style={[styles.button, (loginLoading || forgotLoading) && styles.buttonDisabled]}
                     onPress={handleLogin}
-                    disabled={loading}
+                    disabled={loginLoading || forgotLoading}
                 >
                     <Text style={styles.buttonText}>
-                        {loading ? 'Logging in...' : 'Login'}
+                        {loginLoading ? 'Logging in...' : forgotLoading ? 'Sending reset email...' : 'Login'}
                     </Text>
                 </TouchableOpacity>
             </View>

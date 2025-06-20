@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 
 require __DIR__.'/api.php';
 
@@ -27,14 +28,7 @@ Route::get('/', function () {
 });
 
 // Password reset endpoint (if needed for mobile app)
-Route::get('/reset-password', function (Illuminate\Http\Request $request) {
+Route::get('/reset-password', function (Request $request) {
     $token = $request->query('token');
-    if (!$token) {
-        return response()->json(['error' => 'Invalid password reset link.'], 400);
-    }
-    
-    return response()->json([
-        'message' => 'Password reset token received',
-        'token' => $token
-    ]);
-})->name('password.reset');
+    return view('auth.reset-password', ['token' => $token]);
+});
