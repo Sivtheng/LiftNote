@@ -96,11 +96,19 @@ export default function DashboardPage() {
                                         <div key={comment.id} className="p-4 hover:bg-gray-50">
                                             <div className="flex items-start space-x-3">
                                                 <div className="flex-shrink-0">
-                                                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                        <span className="text-lg font-medium text-indigo-600">
-                                                            {comment.user.name.charAt(0).toUpperCase()}
-                                                        </span>
-                                                    </div>
+                                                    {comment.user.profile_picture ? (
+                                                        <img
+                                                            src={comment.user.profile_picture}
+                                                            alt={comment.user.name + "'s profile"}
+                                                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                                        />
+                                                    ) : (
+                                                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                            <span className="text-lg font-medium text-indigo-600">
+                                                                {comment.user.name.charAt(0).toUpperCase()}
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between">
@@ -164,11 +172,19 @@ export default function DashboardPage() {
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center space-x-4">
                                                     <div className="flex-shrink-0">
-                                                        <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                            <span className="text-xl font-medium text-indigo-600">
-                                                                {client.name.charAt(0).toUpperCase()}
-                                                            </span>
-                                                        </div>
+                                                        {client.profile_picture ? (
+                                                            <img
+                                                                src={client.profile_picture}
+                                                                alt={client.name + "'s profile"}
+                                                                className="h-12 w-12 rounded-full object-cover border border-gray-200"
+                                                            />
+                                                        ) : (
+                                                            <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                                <span className="text-xl font-medium text-indigo-600">
+                                                                    {client.name.charAt(0).toUpperCase()}
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <h3 className="text-lg font-medium text-gray-900">{client.name}</h3>

@@ -87,6 +87,7 @@ export interface Comment {
         name: string;
         email: string;
         role: 'admin' | 'coach' | 'client';
+        profile_picture?: string;
     };
     replies?: Comment[];
     allReplies?: Comment[];

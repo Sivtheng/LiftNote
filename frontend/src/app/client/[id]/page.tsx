@@ -109,11 +109,19 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                     <div className="p-8">
                         <div className="flex items-center space-x-6">
                             <div className="flex-shrink-0">
-                                <div className="h-24 w-24 rounded-full bg-indigo-100 flex items-center justify-center">
-                                    <span className="text-3xl font-medium text-indigo-600">
-                                        {client?.name.charAt(0).toUpperCase()}
-                                    </span>
-                                </div>
+                                {client?.profile_picture ? (
+                                    <img
+                                        src={client.profile_picture}
+                                        alt={client.name + "'s profile"}
+                                        className="h-24 w-24 rounded-full object-cover border border-gray-200"
+                                    />
+                                ) : (
+                                    <div className="h-24 w-24 rounded-full bg-indigo-100 flex items-center justify-center">
+                                        <span className="text-3xl font-medium text-indigo-600">
+                                            {client?.name.charAt(0).toUpperCase()}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <div className="flex-1">
                                 <h1 className="text-3xl font-bold text-gray-900">{client?.name}</h1>

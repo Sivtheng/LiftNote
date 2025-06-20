@@ -388,11 +388,19 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
         <div key={comment.id} className="bg-white rounded-lg shadow p-4 mb-4">
             <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
-                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                        <span className="text-lg font-medium text-indigo-600">
-                            {comment.user.name.charAt(0).toUpperCase()}
-                        </span>
-                    </div>
+                    {comment.user.profile_picture ? (
+                        <img
+                            src={comment.user.profile_picture}
+                            alt={comment.user.name + "'s profile"}
+                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                        />
+                    ) : (
+                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                            <span className="text-lg font-medium text-indigo-600">
+                                {comment.user.name.charAt(0).toUpperCase()}
+                            </span>
+                        </div>
+                    )}
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
