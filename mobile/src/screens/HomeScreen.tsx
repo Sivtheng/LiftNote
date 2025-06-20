@@ -5,6 +5,7 @@ import { Video, ResizeMode } from 'expo-av';
 import { programService, commentService, authService } from '../services/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
     DailyExercises: undefined;
@@ -52,15 +53,49 @@ export default function HomeScreen() {
         }, [])
     );
 
+    const getCurrentUser = async () => {
+        try {
+            // Try to get user data from API first
+            const response = await authService.getProfile();
+            if (response.user) {
+                return response.user.name;
+            }
+            
+            // Fallback to AsyncStorage if API fails
+            const userData = await AsyncStorage.getItem('user');
+            if (userData) {
+                const user = JSON.parse(userData);
+                return user.name;
+            }
+        } catch (error) {
+            console.error('Error getting current user:', error);
+            // Try AsyncStorage as fallback
+            try {
+                const userData = await AsyncStorage.getItem('user');
+                if (userData) {
+                    const user = JSON.parse(userData);
+                    return user.name;
+                }
+            } catch (storageError) {
+                console.error('Error getting user from storage:', storageError);
+            }
+        }
+        return 'Guest';
+    };
+
     const fetchData = async () => {
         try {
             setError(null);
+            
+            // Get current user name first
+            const userName = await getCurrentUser();
+            setClientName(userName);
+            
             const programData = await programService.getClientPrograms();
 
             // Handle case when client has no programs
             if (!programData || !programData.programs || programData.programs.length === 0) {
                 // Set default values for new clients with no programs
-                setClientName('Guest');
                 setCurrentWeek('No Program Assigned');
                 setCurrentDay('No Day Assigned');
                 setProgramName('No Program Assigned');
@@ -80,9 +115,6 @@ export default function HomeScreen() {
                 ? Math.round((program.completed_weeks / program.total_weeks) * 100)
                 : 0;
 
-            // Set client name from the program's client data
-            setClientName(program.client?.name || 'Guest');
-            
             // Get current week and day from the program
             const currentWeek = program.current_week;
             const currentDay = program.current_day;
