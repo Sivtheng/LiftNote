@@ -24,6 +24,33 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
+    - name: Debug Secrets (Safe)
+      run: |
+        echo "Checking if secrets are available..."
+        if [ -n "${{ secrets.DROPLET_HOST }}" ]; then
+          echo "✅ DROPLET_HOST is set"
+        else
+          echo "❌ DROPLET_HOST is not set"
+        fi
+        
+        if [ -n "${{ secrets.DROPLET_USERNAME }}" ]; then
+          echo "✅ DROPLET_USERNAME is set"
+        else
+          echo "❌ DROPLET_USERNAME is not set"
+        fi
+        
+        if [ -n "${{ secrets.DROPLET_SSH_KEY }}" ]; then
+          echo "✅ DROPLET_SSH_KEY is set"
+        else
+          echo "❌ DROPLET_SSH_KEY is not set"
+        fi
+        
+        if [ -n "${{ secrets.DROPLET_PORT }}" ]; then
+          echo "✅ DROPLET_PORT is set"
+        else
+          echo "❌ DROPLET_PORT is not set"
+        fi
+    
     - name: Validate GitHub Secrets
       run: |
         if [ -z "${{ secrets.DROPLET_HOST }}" ]; then
