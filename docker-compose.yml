@@ -11,27 +11,23 @@ services:
       - /app/node_modules
       - /app/.next
     command: npm run dev
-    depends_on:
-      - backend
-    env_file:
-      - .env 
     networks:
       - liftnote
 
-  backend:
-    build:
-      context: .
-      dockerfile: docker/backend.Dockerfile
-    container_name: backend
-    ports:
-      - "8000:80"
-    volumes:
-      - ./backend:/var/www/html
-    env_file:
-      - ./backend/.env
-    command: ["sh", "-c", "apache2-foreground"]
-    networks:
-      - liftnote
+  # backend:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/backend.Dockerfile
+  #   container_name: backend
+  #   ports:
+  #     - "8000:80"
+  #   volumes:
+  #     - ./backend:/var/www/html
+  #   env_file:
+  #     - ./backend/.env
+  #   command: ["sh", "-c", "apache2-foreground"]
+  #   networks:
+  #     - liftnote
 
   # liftnote_db:
   #   image: mysql:8.0

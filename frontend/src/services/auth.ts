@@ -2,8 +2,7 @@
 
 import { LoginCredentials, LoginResponse } from '@/types/auth';
 
-const API_URL = 'http://localhost:8000/api';
-const SANCTUM_COOKIE_URL = 'http://localhost:8000';
+const API_URL = 'https://api-liftnote.xyz/api';
 
 const isClient = typeof window !== 'undefined';
 
@@ -21,67 +20,11 @@ const handleApiResponse = async (response: Response, router?: any) => {
 };
 
 export const authService = {
-    async getCsrfToken(): Promise<void> {
-        if (!isClient) return;
-        
-        try {
-            console.log('Fetching CSRF token from:', `${SANCTUM_COOKIE_URL}/sanctum/csrf-cookie`);
-            const response = await fetch(`${SANCTUM_COOKIE_URL}/sanctum/csrf-cookie`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                mode: 'cors',
-            });
-            
-            console.log('CSRF Response Status:', response.status);
-            console.log('CSRF Response Headers:', Object.fromEntries(response.headers.entries()));
-            
-            if (!response.ok) {
-                const text = await response.text();
-                console.error('CSRF Error Response:', text);
-                throw new Error(`Failed to fetch CSRF token: ${response.status}`);
-            }
-
-            // Get the XSRF-TOKEN cookie
-            const cookies = document.cookie.split(';');
-            const xsrfToken = cookies.find(cookie => cookie.trim().startsWith('XSRF-TOKEN='));
-            console.log('Cookies after CSRF request:', document.cookie);
-            console.log('Found XSRF-TOKEN:', xsrfToken);
-            
-            if (!xsrfToken) {
-                throw new Error('XSRF-TOKEN cookie not set');
-            }
-            
-            // Wait a bit to ensure cookie is set
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        } catch (error) {
-            console.error('Error fetching CSRF token:', error);
-            throw error;
-        }
-    },
-
     async login(credentials: LoginCredentials): Promise<LoginResponse> {
         if (!isClient) throw new Error('Login can only be performed on the client side');
         
         try {
             console.log('Starting login process...');
-            
-            // Get CSRF cookie first
-            await this.getCsrfToken();
-            
-            // Get the XSRF-TOKEN cookie value
-            const xsrfToken = document.cookie
-                .split(';')
-                .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
-                ?.split('=')[1];
-
-            if (!xsrfToken) {
-                throw new Error('XSRF-TOKEN not found in cookies');
-            }
-
             console.log('Attempting login with credentials:', {
                 email: credentials.email,
                 password: '********'
@@ -92,11 +35,8 @@ export const authService = {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': decodeURIComponent(xsrfToken)
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
-                credentials: 'include',
-                mode: 'cors',
                 body: JSON.stringify(credentials),
             });
 
@@ -153,21 +93,6 @@ export const authService = {
                 return;
             }
 
-            // Get CSRF cookie first
-            await this.getCsrfToken();
-            
-            // Get the XSRF-TOKEN cookie value
-            const xsrfToken = document.cookie
-                .split(';')
-                .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
-                ?.split('=')[1];
-
-            if (!xsrfToken) {
-                // If no XSRF token, just clear local storage
-                localStorage.removeItem('token');
-                return;
-            }
-
             console.log('Attempting logout with token...');
 
             const response = await fetch(`${API_URL}/logout`, {
@@ -176,11 +101,8 @@ export const authService = {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': decodeURIComponent(xsrfToken),
                     'Authorization': `Bearer ${token}`
                 },
-                credentials: 'include',
-                mode: 'cors',
             });
 
             console.log('Logout Response Status:', response.status);
@@ -207,7 +129,6 @@ export const authService = {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
                 },
-                credentials: 'include',
             });
 
             if (!response.ok) {

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '../../components/Navbar';
 import ExerciseModal from './ExerciseModal';
 import { use } from 'react';
+import { API_CONFIG, getAuthHeaders } from '@/config/api';
 
 interface Week {
     id: string;
@@ -46,9 +47,6 @@ interface Program {
     weeks: Week[];
 }
 
-const API_URL = 'http://localhost:8000/api';
-const SANCTUM_COOKIE_URL = 'http://localhost:8000';
-
 export default function ProgramDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const router = useRouter();
@@ -73,38 +71,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
         console.log('showDayDropdown state:', showDayDropdown);
     }, [showDayDropdown]);
 
-    const getCsrfToken = async () => {
-        try {
-            const response = await fetch(`${SANCTUM_COOKIE_URL}/sanctum/csrf-cookie`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                mode: 'cors',
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to fetch CSRF token: ${response.status}`);
-            }
-
-            const xsrfToken = document.cookie
-                .split(';')
-                .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
-                ?.split('=')[1];
-
-            if (!xsrfToken) {
-                throw new Error('XSRF-TOKEN cookie not set');
-            }
-
-            return decodeURIComponent(xsrfToken);
-        } catch (error) {
-            console.error('Error fetching CSRF token:', error);
-            throw error;
-        }
-    };
-
     const fetchProgram = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -112,16 +78,8 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 throw new Error('No authentication token found');
             }
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors'
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}`, {
+                headers: getAuthHeaders(token)
             });
 
             if (!response.ok) {
@@ -210,18 +168,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 throw new Error('No authentication token found');
             }
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify({
                     name: `Week ${weeks.length + 1}`,
                     order: weeks.length + 1
@@ -273,18 +222,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 return;
             }
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify({
                     name: `Day ${weeks[weekIndex].days.length + 1}`,
                     order: weeks[weekIndex].days.length + 1
@@ -343,20 +283,11 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 return;
             }
 
-            const xsrfToken = await getCsrfToken();
             switch (action) {
                 case 'duplicate': {
-                    const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/duplicate`, {
+                    const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/duplicate`, {
                         method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-XSRF-TOKEN': xsrfToken
-                        },
-                        credentials: 'include',
-                        mode: 'cors'
+                        headers: getAuthHeaders(token)
                     });
 
                     const data = await response.json();
@@ -403,16 +334,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                     break;
                 }
                 case 'delete': {
-                    const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}`, {
+                    const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}`, {
                         method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-XSRF-TOKEN': xsrfToken
-                        },
-                        credentials: 'include',
-                        mode: 'cors'
+                        headers: getAuthHeaders(token)
                     });
 
                     const data = await response.json();
@@ -469,18 +393,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 return;
             }
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify({ 
                     name: newName,
                     order: weeks[weekIndex].order 
@@ -542,25 +457,16 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 return;
             }
 
-            const xsrfToken = await getCsrfToken();
             switch (action) {
                 case 'duplicate': {
                     console.log('Making duplicate day request...', {
-                        url: `${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/duplicate`,
+                        url: `${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/duplicate`,
                         weekId,
                         dayId
                     });
-                    const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/duplicate`, {
+                    const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/duplicate`, {
                         method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-XSRF-TOKEN': xsrfToken
-                        },
-                        credentials: 'include',
-                        mode: 'cors'
+                        headers: getAuthHeaders(token)
                     });
 
                     const data = await response.json();
@@ -616,16 +522,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                     break;
                 }
                 case 'delete': {
-                    const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}`, {
+                    const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}`, {
                         method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Accept': 'application/json',
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-XSRF-TOKEN': xsrfToken
-                        },
-                        credentials: 'include',
-                        mode: 'cors'
+                        headers: getAuthHeaders(token)
                     });
 
                     const data = await response.json();
@@ -679,18 +578,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             const dayIndex = weeks[weekIndex].days.findIndex(d => d.id === dayId);
             if (dayIndex === -1) return;
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify({ 
                     name: newName,
                     order: dayIndex + 1
@@ -719,18 +609,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             const token = localStorage.getItem('token');
             if (!token) return;
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${selectedDay.week_id}/days/${selectedDay.id}/exercises`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${selectedDay.week_id}/days/${selectedDay.id}/exercises`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify({
                     name: exercise.name,
                     sets: exercise.sets,
@@ -808,18 +689,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             const token = localStorage.getItem('token');
             if (!token) return;
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${selectedDay.week_id}/days/${selectedDay.id}/exercises/${exercise.id}`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${selectedDay.week_id}/days/${selectedDay.id}/exercises/${exercise.id}`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify({
                     name: exercise.name,
                     sets: exercise.sets,
@@ -892,17 +764,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             const token = localStorage.getItem('token');
             if (!token) return;
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/exercises/${exerciseId}`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/exercises/${exerciseId}`, {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors'
+                headers: getAuthHeaders(token)
             });
 
             if (!response.ok) {
@@ -938,18 +802,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             const token = localStorage.getItem('token');
             if (!token) return;
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/exercises`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/exercises`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify({
                     name: `${exercise.name} (Copy)`,
                     sets: exercise.sets,

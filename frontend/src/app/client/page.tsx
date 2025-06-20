@@ -7,9 +7,7 @@ import { Client } from '@/types/client';
 import Navbar from '../components/Navbar';
 import Image from 'next/image';
 import Link from 'next/link';
-
-const API_URL = 'http://localhost:8000/api';
-const SANCTUM_COOKIE_URL = 'http://localhost:8000';
+import { API_CONFIG, getAuthHeaders } from '@/config/api';
 
 interface AddClientModalProps {
     isOpen: boolean;
@@ -136,38 +134,6 @@ export default function ClientListPage() {
     const [clientToDelete, setClientToDelete] = useState<{ id: number; name: string } | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const getCsrfToken = async () => {
-        try {
-            const response = await fetch(`${SANCTUM_COOKIE_URL}/sanctum/csrf-cookie`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                mode: 'cors',
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to fetch CSRF token: ${response.status}`);
-            }
-
-            const xsrfToken = document.cookie
-                .split(';')
-                .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
-                ?.split('=')[1];
-
-            if (!xsrfToken) {
-                throw new Error('XSRF-TOKEN cookie not set');
-            }
-
-            return decodeURIComponent(xsrfToken);
-        } catch (error) {
-            console.error('Error fetching CSRF token:', error);
-            throw error;
-        }
-    };
-
     useEffect(() => {
         const fetchClients = async () => {
             try {
@@ -179,19 +145,10 @@ export default function ClientListPage() {
                     throw new Error('No authentication token found');
                 }
 
-                const xsrfToken = await getCsrfToken();
                 console.log('Fetching clients with token:', token.substring(0, 10) + '...');
                 
-                const response = await fetch(`${API_URL}/users`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-XSRF-TOKEN': xsrfToken
-                    },
-                    credentials: 'include',
-                    mode: 'cors'
+                const response = await fetch(`${API_CONFIG.BASE_URL}/users`, {
+                    headers: getAuthHeaders(token)
                 });
 
                 console.log('Response status:', response.status);
@@ -234,20 +191,10 @@ export default function ClientListPage() {
             if (!token) {
                 throw new Error('No authentication token found');
             }
-
-            const xsrfToken = await getCsrfToken();
             
-            const response = await fetch(`${API_URL}/users`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/users`, {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify(clientData)
             });
 
@@ -257,16 +204,8 @@ export default function ClientListPage() {
             }
 
             // Refresh the client list
-            const updatedResponse = await fetch(`${API_URL}/users`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors'
+            const updatedResponse = await fetch(`${API_CONFIG.BASE_URL}/users`, {
+                headers: getAuthHeaders(token)
             });
 
             const updatedData = await updatedResponse.json();
@@ -291,20 +230,10 @@ export default function ClientListPage() {
             if (!token) {
                 throw new Error('No authentication token found');
             }
-
-            const xsrfToken = await getCsrfToken();
             
-            const response = await fetch(`${API_URL}/users/${clientToDelete.id}`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/users/${clientToDelete.id}`, {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors'
+                headers: getAuthHeaders(token)
             });
 
             if (!response.ok) {

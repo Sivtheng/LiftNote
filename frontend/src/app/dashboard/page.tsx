@@ -6,8 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '../components/Navbar';
 import { Client } from '@/types/client';
 import { Program, Comment } from '@/types/program';
-
-const API_URL = 'http://localhost:8000/api';
+import { API_CONFIG, getAuthHeaders } from '@/config/api';
 
 export default function DashboardPage() {
     const router = useRouter();
@@ -29,13 +28,8 @@ export default function DashboardPage() {
                 }
 
                 // Fetch clients
-                const clientsResponse = await fetch(`${API_URL}/users`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'include'
+                const clientsResponse = await fetch(`${API_CONFIG.BASE_URL}/users`, {
+                    headers: getAuthHeaders(token)
                 });
 
                 if (!clientsResponse.ok) {
@@ -46,13 +40,8 @@ export default function DashboardPage() {
                 setClients(clientsData.users);
 
                 // Fetch recent comments
-                const commentsResponse = await fetch(`${API_URL}/comments/recent`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    credentials: 'include'
+                const commentsResponse = await fetch(`${API_CONFIG.BASE_URL}/comments/recent`, {
+                    headers: getAuthHeaders(token)
                 });
 
                 if (!commentsResponse.ok) {

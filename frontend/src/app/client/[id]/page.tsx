@@ -7,8 +7,7 @@ import { Client } from '@/types/client';
 import { Program, ProgressLog, Comment } from '@/types/program';
 import { Questionnaire } from '@/types/client';
 import Navbar from '../../components/Navbar';
-
-const API_URL = 'http://localhost:8000/api';
+import { API_CONFIG, getAuthHeaders } from '@/config/api';
 
 export default function ClientDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
@@ -36,13 +35,8 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                 }
 
                 // Fetch client details
-                const clientResponse = await fetch(`${API_URL}/users/${clientId}`, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Authorization': `Bearer ${token}`
-                    }
+                const clientResponse = await fetch(`${API_CONFIG.BASE_URL}/users/${clientId}`, {
+                    headers: getAuthHeaders(token)
                 });
 
                 if (!clientResponse.ok) {
@@ -54,13 +48,8 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                 setClient(clientData.user);
 
                 // Fetch client's questionnaire
-                const questionnaireResponse = await fetch(`${API_URL}/questionnaires/users/${clientId}`, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Authorization': `Bearer ${token}`
-                    }
+                const questionnaireResponse = await fetch(`${API_CONFIG.BASE_URL}/questionnaires/users/${clientId}`, {
+                    headers: getAuthHeaders(token)
                 });
 
                 if (questionnaireResponse.ok) {
@@ -69,13 +58,8 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                 }
 
                 // Fetch client's programs
-                const programsResponse = await fetch(`${API_URL}/programs/coach`, {
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Authorization': `Bearer ${token}`
-                    }
+                const programsResponse = await fetch(`${API_CONFIG.BASE_URL}/programs/coach`, {
+                    headers: getAuthHeaders(token)
                 });
 
                 if (!programsResponse.ok) {

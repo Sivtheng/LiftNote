@@ -5,9 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Program, ProgressLog, ProgramWeek, Comment } from '@/types/program';
 import Navbar from '../components/Navbar';
-
-const API_URL = 'http://localhost:8000/api';
-const SANCTUM_COOKIE_URL = 'http://localhost:8000';
+import { API_CONFIG, getAuthHeaders } from '@/config/api';
 
 export default function ProgramListPage() {
     const router = useRouter();
@@ -15,38 +13,6 @@ export default function ProgramListPage() {
     const [programs, setPrograms] = useState<Program[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string>('');
-
-    const getCsrfToken = async () => {
-        try {
-            const response = await fetch(`${SANCTUM_COOKIE_URL}/sanctum/csrf-cookie`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                mode: 'cors',
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to fetch CSRF token: ${response.status}`);
-            }
-
-            const xsrfToken = document.cookie
-                .split(';')
-                .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
-                ?.split('=')[1];
-
-            if (!xsrfToken) {
-                throw new Error('XSRF-TOKEN cookie not set');
-            }
-
-            return decodeURIComponent(xsrfToken);
-        } catch (error) {
-            console.error('Error fetching CSRF token:', error);
-            throw error;
-        }
-    };
 
     useEffect(() => {
         const fetchPrograms = async () => {
@@ -61,17 +27,8 @@ export default function ProgramListPage() {
                     throw new Error('No authentication token found');
                 }
 
-                const xsrfToken = await getCsrfToken();
-                const response = await fetch(`${API_URL}/programs/coach`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-XSRF-TOKEN': xsrfToken
-                    },
-                    credentials: 'include',
-                    mode: 'cors'
+                const response = await fetch(`${API_CONFIG.BASE_URL}/programs/coach`, {
+                    headers: getAuthHeaders(token)
                 });
 
                 const data = await response.json();
@@ -111,18 +68,9 @@ export default function ProgramListPage() {
                 throw new Error('No authentication token found');
             }
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${programId}`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${programId}`, {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors'
+                headers: getAuthHeaders(token)
             });
 
             if (!response.ok) {
@@ -144,18 +92,9 @@ export default function ProgramListPage() {
                 throw new Error('No authentication token found');
             }
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/programs/${programId}`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${programId}`, {
                 method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify({
                     status: newStatus,
                     title: programs.find(p => p.id === programId)?.title || '',

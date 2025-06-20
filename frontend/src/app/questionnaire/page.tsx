@@ -5,9 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Question } from '@/types/question';
 import Navbar from '../components/Navbar';
-
-const API_URL = 'http://localhost:8000/api';
-const SANCTUM_COOKIE_URL = 'http://localhost:8000';
+import { API_CONFIG, getAuthHeaders } from '@/config/api';
 
 export default function QuestionnairePage() {
     const router = useRouter();
@@ -25,38 +23,6 @@ export default function QuestionnairePage() {
         order: 0
     });
 
-    const getCsrfToken = async () => {
-        try {
-            const response = await fetch(`${SANCTUM_COOKIE_URL}/sanctum/csrf-cookie`, {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                mode: 'cors',
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Failed to fetch CSRF token: ${response.status}`);
-            }
-
-            const xsrfToken = document.cookie
-                .split(';')
-                .find(cookie => cookie.trim().startsWith('XSRF-TOKEN='))
-                ?.split('=')[1];
-
-            if (!xsrfToken) {
-                throw new Error('XSRF-TOKEN cookie not set');
-            }
-
-            return decodeURIComponent(xsrfToken);
-        } catch (error) {
-            console.error('Error fetching CSRF token:', error);
-            throw error;
-        }
-    };
-
     useEffect(() => {
         if (isAuthenticated) {
             fetchQuestions();
@@ -70,19 +36,10 @@ export default function QuestionnairePage() {
                 throw new Error('No authentication token found');
             }
 
-            const xsrfToken = await getCsrfToken();
             console.log('Fetching questions with token:', token.substring(0, 10) + '...');
             
-            const response = await fetch(`${API_URL}/questionnaires/questions`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors'
+            const response = await fetch(`${API_CONFIG.BASE_URL}/questionnaires/questions`, {
+                headers: getAuthHeaders(token)
             });
             
             console.log('Response status:', response.status);
@@ -123,18 +80,9 @@ export default function QuestionnairePage() {
                 throw new Error('No authentication token found');
             }
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/questionnaires/questions`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/questionnaires/questions`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify(formData)
             });
 
@@ -161,18 +109,9 @@ export default function QuestionnairePage() {
                 throw new Error('No authentication token found');
             }
 
-            const xsrfToken = await getCsrfToken();
-            const response = await fetch(`${API_URL}/questionnaires/questions`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/questionnaires/questions`, {
                 method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-XSRF-TOKEN': xsrfToken
-                },
-                credentials: 'include',
-                mode: 'cors',
+                headers: getAuthHeaders(token),
                 body: JSON.stringify({ key })
             });
 

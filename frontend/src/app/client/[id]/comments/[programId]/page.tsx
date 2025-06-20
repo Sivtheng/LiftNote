@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Program, Comment } from '@/types/program';
 import Navbar from '../../../../components/Navbar';
-
-const API_URL = 'http://localhost:8000/api';
+import { API_CONFIG, getAuthHeaders } from '@/config/api';
 
 export default function CommentsPage({ params }: { params: Promise<{ id: string; programId: string }> }) {
     const router = useRouter();
@@ -43,12 +42,8 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 }
 
                 // Fetch current user profile
-                const userResponse = await fetch(`${API_URL}/profile`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                const userResponse = await fetch(`${API_CONFIG.BASE_URL}/profile`, {
+                    headers: getAuthHeaders(token)
                 });
 
                 if (userResponse.ok) {
@@ -57,12 +52,8 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 }
 
                 // Fetch program details
-                const programResponse = await fetch(`${API_URL}/programs/${programId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                const programResponse = await fetch(`${API_CONFIG.BASE_URL}/programs/${programId}`, {
+                    headers: getAuthHeaders(token)
                 });
 
                 if (!programResponse.ok) {
@@ -73,12 +64,8 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 setProgram(programData.program);
 
                 // Fetch comments
-                const commentsResponse = await fetch(`${API_URL}/programs/${programId}/comments`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+                const commentsResponse = await fetch(`${API_CONFIG.BASE_URL}/programs/${programId}/comments`, {
+                    headers: getAuthHeaders(token)
                 });
 
                 if (!commentsResponse.ok) {
@@ -188,7 +175,7 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 programId: programId
             });
 
-            const url = `${API_URL}/programs/${programId}/comments`;
+            const url = `${API_CONFIG.BASE_URL}/programs/${programId}/comments`;
             console.log('Making request to:', url);
 
             // Use FormData for better performance (no base64 conversion)
@@ -306,13 +293,9 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/programs/${programId}/comments/${commentId}`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${programId}/comments/${commentId}`, {
                 method: 'DELETE',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: getAuthHeaders(token)
             });
 
             if (!response.ok) {
@@ -358,14 +341,9 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 throw new Error('No authentication token found');
             }
 
-            const response = await fetch(`${API_URL}/programs/${programId}/comments/${commentId}`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${programId}/comments/${commentId}`, {
                 method: 'PUT',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Authorization': `Bearer ${token}`
-                },
+                headers: getAuthHeaders(token),
                 body: JSON.stringify({
                     content: editContent
                 })
