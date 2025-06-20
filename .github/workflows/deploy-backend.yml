@@ -41,7 +41,7 @@ jobs:
           echo "🚀 Starting deployment..."
           
           # Navigate to project directory
-          cd /var/www/liftnote
+          cd /var/www/LiftNote
           
           # Pull latest changes
           echo "📥 Pulling latest changes..."
