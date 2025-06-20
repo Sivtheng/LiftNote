@@ -36,13 +36,28 @@
             flex-direction: column;
             gap: 15px;
         }
-        input[type="password"] {
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        input[type="password"], input[type="text"] {
             padding: 10px;
             border-radius: 4px;
             border: 1px solid #ccc;
             font-size: 16px;
+            width: 100%;
         }
-        button {
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: #888;
+        }
+        button[type="submit"] {
             background-color: #007AFF;
             color: white;
             border: none;
@@ -63,7 +78,7 @@
                 margin: 8px;
                 padding: 12px;
             }
-            input[type="password"], button {
+            input[type="password"], input[type="text"], button[type="submit"] {
                 font-size: 15px;
                 padding: 10px;
             }
@@ -75,10 +90,28 @@
         <h2>Reset Your Password</h2>
         <form method="POST" action="/api/reset-password">
             <input type="hidden" name="token" value="{{ $token }}">
-            <input type="password" name="password" placeholder="New Password" required>
-            <input type="password" name="password_confirmation" placeholder="Confirm Password" required>
+            <div class="input-group">
+                <input id="password" type="password" name="password" placeholder="New Password" required>
+                <button type="button" class="toggle-password" onclick="togglePassword('password', this)">&#128065;</button>
+            </div>
+            <div class="input-group">
+                <input id="password_confirmation" type="password" name="password_confirmation" placeholder="Confirm Password" required>
+                <button type="button" class="toggle-password" onclick="togglePassword('password_confirmation', this)">&#128065;</button>
+            </div>
             <button type="submit">Reset Password</button>
         </form>
     </div>
+    <script>
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.innerHTML = '&#128064;'; // open eye
+            } else {
+                input.type = 'password';
+                btn.innerHTML = '&#128065;'; // closed eye
+            }
+        }
+    </script>
 </body>
 </html> 
