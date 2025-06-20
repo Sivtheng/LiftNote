@@ -7,6 +7,7 @@ on:
       - 'backend/**'
       - 'docker/backend.Dockerfile'
       - '.github/workflows/deploy-backend.yml'
+      - 'docker-compose.prod.yml'
   pull_request:
     branches: [ main ]
     paths:
@@ -93,34 +94,67 @@ jobs:
         key: ${{ secrets.DROPLET_SSH_KEY }}
         port: ${{ secrets.DROPLET_PORT }}
         script: |
+          set -e
+          
+          echo "🚀 Starting deployment..."
+          
           # Navigate to project directory
           cd /var/www/liftnote
           
           # Pull latest changes
+          echo "📥 Pulling latest changes..."
           git pull origin main
           
           # Stop existing containers
-          docker-compose -f docker-compose.prod.yml down
+          echo "🛑 Stopping existing containers..."
+          docker-compose -f docker-compose.prod.yml down || true
           
           # Remove old images
+          echo "🧹 Cleaning up old Docker images..."
           docker system prune -f
           
           # Build and start new containers
+          echo "🔨 Building and starting new containers..."
           docker-compose -f docker-compose.prod.yml up -d --build
           
+          # Wait for container to be healthy
+          echo "⏳ Waiting for container to be healthy..."
+          sleep 30
+          
+          # Check if container is running
+          if ! docker-compose -f docker-compose.prod.yml ps | grep -q "Up"; then
+            echo "❌ Container failed to start. Checking logs..."
+            docker-compose -f docker-compose.prod.yml logs backend
+            exit 1
+          fi
+          
           # Run database migrations
+          echo "🗄️ Running database migrations..."
           docker-compose -f docker-compose.prod.yml exec -T backend php artisan migrate --force
           
           # Clear and cache config
+          echo "⚙️ Clearing and caching configuration..."
           docker-compose -f docker-compose.prod.yml exec -T backend php artisan config:cache
           docker-compose -f docker-compose.prod.yml exec -T backend php artisan route:cache
           docker-compose -f docker-compose.prod.yml exec -T backend php artisan view:cache
           
           # Set proper permissions
+          echo "🔐 Setting proper permissions..."
           docker-compose -f docker-compose.prod.yml exec -T backend chown -R www-data:www-data /var/www/html/storage
           docker-compose -f docker-compose.prod.yml exec -T backend chown -R www-data:www-data /var/www/html/bootstrap/cache
           
           # Restart nginx
+          echo "🔄 Restarting Nginx..."
           sudo systemctl restart nginx
           
-          echo "Deployment completed successfully!" 
+          # Health check
+          echo "🏥 Performing health check..."
+          sleep 10
+          if curl -f https://api-liftnote.xyz/health > /dev/null 2>&1; then
+            echo "✅ Health check passed!"
+          else
+            echo "⚠️ Health check failed. Please check the application manually."
+            exit 1
+          fi
+          
+          echo "🎉 Deployment completed successfully!" 
