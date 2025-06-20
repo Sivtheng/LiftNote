@@ -13,15 +13,17 @@ This guide will help you set up and troubleshoot GitHub Actions CI/CD for your L
 
 Go to your GitHub repository → Settings → Secrets and variables → Actions, and add the following secrets:
 
-### Required Secrets:
-```
+### Required Secrets
+
+```bash
 DROPLET_HOST=your-droplet-ip-address
 DROPLET_USERNAME=root
 DROPLET_SSH_KEY=your-private-ssh-key-content
 DROPLET_PORT=22
 ```
 
-### How to Generate SSH Key:
+### How to Generate SSH Key
+
 ```bash
 # Generate a new SSH key pair
 ssh-keygen -t rsa -b 4096 -C "your-email@example.com"
@@ -103,10 +105,12 @@ The workflow will:
 ### Issue 1: SSH Connection Failed
 
 **Symptoms:**
+
 - GitHub Actions fails with "SSH connection failed"
 - "Permission denied" errors
 
 **Solutions:**
+
 1. Verify SSH key is correct in GitHub secrets
 2. Ensure public key is added to droplet
 3. Check droplet IP address
@@ -120,10 +124,12 @@ ssh -o ConnectTimeout=10 -o BatchMode=yes root@YOUR_DROPLET_IP "echo 'SSH test'"
 ### Issue 2: Docker Build Failures
 
 **Symptoms:**
+
 - "Build failed" errors in GitHub Actions
 - Missing files during build
 
 **Solutions:**
+
 1. Check if all required files exist
 2. Verify Dockerfile syntax
 3. Ensure environment variables are set
@@ -132,10 +138,12 @@ ssh -o ConnectTimeout=10 -o BatchMode=yes root@YOUR_DROPLET_IP "echo 'SSH test'"
 ### Issue 3: Database Connection Issues
 
 **Symptoms:**
+
 - Migration failures
 - "Connection refused" errors
 
 **Solutions:**
+
 1. Verify database credentials
 2. Check if database is accessible from droplet
 3. Ensure SSL certificates are configured
@@ -144,10 +152,12 @@ ssh -o ConnectTimeout=10 -o BatchMode=yes root@YOUR_DROPLET_IP "echo 'SSH test'"
 ### Issue 4: Permission Denied
 
 **Symptoms:**
+
 - "Permission denied" errors during deployment
 - Cannot write to directories
 
 **Solutions:**
+
 1. Ensure user has sudo privileges
 2. Check file permissions
 3. Run `chmod +x scripts/deploy.sh`
@@ -155,10 +165,12 @@ ssh -o ConnectTimeout=10 -o BatchMode=yes root@YOUR_DROPLET_IP "echo 'SSH test'"
 ### Issue 5: Health Check Failures
 
 **Symptoms:**
+
 - Deployment succeeds but health check fails
 - Application not responding
 
 **Solutions:**
+
 1. Check application logs
 2. Verify nginx configuration
 3. Check if container is running
@@ -166,7 +178,7 @@ ssh -o ConnectTimeout=10 -o BatchMode=yes root@YOUR_DROPLET_IP "echo 'SSH test'"
 
 ## Troubleshooting Commands
 
-### On Your Droplet:
+### On Your Droplet
 
 ```bash
 # Check container status
@@ -188,7 +200,7 @@ ls -la /var/www/liftnote/scripts/
 docker-compose -f docker-compose.prod.yml exec backend php artisan tinker
 ```
 
-### Local Testing:
+### Local Testing
 
 ```bash
 # Run the troubleshooting script
@@ -203,13 +215,15 @@ ssh root@YOUR_DROPLET_IP
 
 ## Monitoring and Debugging
 
-### GitHub Actions Logs:
+### GitHub Actions Logs
+
 1. Go to your repository on GitHub
 2. Click "Actions" tab
 3. Click on the latest workflow run
 4. Check the logs for specific error messages
 
-### Application Monitoring:
+### Application Monitoring
+
 ```bash
 # Real-time logs
 docker-compose -f docker-compose.prod.yml logs -f backend
@@ -243,4 +257,4 @@ If you're still having issues:
 3. Test each component manually
 4. Verify all prerequisites are met
 
-Remember: CI/CD is a process that requires careful setup and testing. Start with manual deployment to ensure everything works, then gradually move to automated deployment. 
+Remember: CI/CD is a process that requires careful setup and testing. Start with manual deployment to ensure everything works, then gradually move to automated deployment.

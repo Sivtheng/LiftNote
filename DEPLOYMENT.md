@@ -14,7 +14,7 @@ This guide will help you deploy the LiftNote backend to a DigitalOcean droplet u
 
 Go to your GitHub repository → Settings → Secrets and variables → Actions, and add the following secrets:
 
-```
+```bash
 DROPLET_HOST=your-droplet-ip
 DROPLET_USERNAME=root
 DROPLET_SSH_KEY=your-private-ssh-key
@@ -31,17 +31,20 @@ DROPLET_PORT=22
 ### Option A: Automated Setup (Recommended)
 
 1. SSH into your droplet:
+
    ```bash
    ssh root@your-droplet-ip
    ```
 
 2. Clone your repository:
+
    ```bash
    git clone https://github.com/yourusername/LiftNote.git /var/www/liftnote
    cd /var/www/liftnote
    ```
 
 3. Run the setup script:
+
    ```bash
    chmod +x scripts/setup-droplet.sh
    ./scripts/setup-droplet.sh
@@ -52,12 +55,14 @@ DROPLET_PORT=22
 If you prefer manual setup, follow these steps:
 
 1. **Update system and install packages:**
+
    ```bash
    sudo apt update && sudo apt upgrade -y
    sudo apt install -y docker.io docker-compose nginx certbot python3-certbot-nginx git
    ```
 
 2. **Set up Docker:**
+
    ```bash
    sudo systemctl enable docker
    sudo systemctl start docker
@@ -65,6 +70,7 @@ If you prefer manual setup, follow these steps:
    ```
 
 3. **Configure Nginx:**
+
    ```bash
    sudo cp nginx/liftnote.conf /etc/nginx/sites-available/liftnote
    sudo ln -sf /etc/nginx/sites-available/liftnote /etc/nginx/sites-enabled/
@@ -74,6 +80,7 @@ If you prefer manual setup, follow these steps:
    ```
 
 4. **Set up SSL:**
+
    ```bash
    sudo certbot --nginx -d api.yourdomain.com
    ```
@@ -81,11 +88,13 @@ If you prefer manual setup, follow these steps:
 ## Step 4: Configure Environment Variables
 
 1. Copy the production environment template:
+
    ```bash
    cp backend/env.production backend/.env.production
    ```
 
 2. Edit `backend/.env.production` with your actual values:
+
    ```bash
    nano backend/.env.production
    ```
@@ -102,6 +111,7 @@ If you prefer manual setup, follow these steps:
    - `DO_SPACES_BUCKET=your-bucket-name`
 
 3. Generate an application key:
+
    ```bash
    cd backend
    php artisan key:generate
@@ -118,11 +128,13 @@ If you prefer manual setup, follow these steps:
 ## Step 6: Initial Deployment
 
 1. Run the deployment script:
+
    ```bash
    ./scripts/deploy.sh
    ```
 
 2. Check if everything is working:
+
    ```bash
    curl https://api.yourdomain.com/health
    ```
@@ -137,6 +149,7 @@ If you prefer manual setup, follow these steps:
 ## Monitoring and Maintenance
 
 ### View Logs
+
 ```bash
 # Application logs
 docker-compose -f docker-compose.prod.yml logs -f backend
@@ -147,18 +160,23 @@ sudo tail -f /var/log/nginx/liftnote_error.log
 ```
 
 ### Manual Deployment
+
 ```bash
 ./scripts/deploy.sh
 ```
 
 ### SSL Certificate Renewal
+
 SSL certificates are automatically renewed via cron job. You can manually renew:
+
 ```bash
 sudo certbot renew
 ```
 
 ### Backup
+
 The deployment script automatically creates backups. To restore:
+
 ```bash
 sudo cp -r /var/www/liftnote.backup.YYYYMMDD_HHMMSS /var/www/liftnote
 ```
@@ -168,6 +186,7 @@ sudo cp -r /var/www/liftnote.backup.YYYYMMDD_HHMMSS /var/www/liftnote
 ### Common Issues
 
 1. **Container won't start:**
+
    ```bash
    docker-compose -f docker-compose.prod.yml logs backend
    ```
@@ -177,11 +196,13 @@ sudo cp -r /var/www/liftnote.backup.YYYYMMDD_HHMMSS /var/www/liftnote
    - Ensure your droplet can connect to the database cluster
 
 3. **SSL certificate issues:**
+
    ```bash
    sudo certbot --nginx -d api.yourdomain.com
    ```
 
 4. **Permission issues:**
+
    ```bash
    sudo chown -R $USER:$USER /var/www/liftnote
    ```
@@ -189,6 +210,7 @@ sudo cp -r /var/www/liftnote.backup.YYYYMMDD_HHMMSS /var/www/liftnote
 ### Health Check
 
 The application includes a health check endpoint at `/health`. You can monitor it:
+
 ```bash
 curl https://api.yourdomain.com/health
 ```
@@ -209,7 +231,8 @@ curl https://api.yourdomain.com/health
 ## Support
 
 If you encounter issues:
+
 1. Check the logs: `docker-compose -f docker-compose.prod.yml logs`
 2. Verify environment variables
 3. Check network connectivity
-4. Review the deployment script output 
+4. Review the deployment script output
