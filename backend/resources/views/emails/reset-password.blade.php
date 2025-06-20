@@ -34,7 +34,7 @@
     
     <p>Click the button below to reset your password:</p>
     
-    <a href="http://localhost:8000/reset-password?token={{ $token }}" class="button">Reset Password</a>
+    <a href="{{ $resetUrl ?? env('FRONTEND_URL', 'https://liftnote.xyz') }}/reset-password?token={{ $token }}" class="button">Reset Password</a>
     
     <p>If you did not request a password reset, no further action is required.</p>
     

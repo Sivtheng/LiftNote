@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use App\Services\MailService;
 
 class AuthController extends Controller
 {
@@ -625,10 +626,14 @@ class AuthController extends Controller
 
             // Send password reset email
             Log::info('Attempting to send email');
-            Mail::send('emails.reset-password', ['token' => $token], function($message) use ($user) {
-                $message->to($user->email);
-                $message->subject('Password Reset Request');
-            });
+            $emailSent = MailService::sendPasswordResetEmail($user->email, $token);
+            
+            if (!$emailSent) {
+                return response()->json([
+                    'message' => 'Failed to send password reset email. Please try again later.'
+                ], 500);
+            }
+            
             Log::info('Email sent successfully');
 
             return response()->json([
