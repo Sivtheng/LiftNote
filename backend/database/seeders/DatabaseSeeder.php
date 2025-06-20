@@ -14,14 +14,14 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Create Admin User
-        User::create([
-            'name' => 'admin',
-            'email' => 'admin@liftnote.com',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-            'phone_number' => '1234567890',
-            'bio' => 'System Administrator',
-        ]);
+        // User::create([
+        //     'name' => 'admin',
+        //     'email' => 'admin@liftnote.com',
+        //     'password' => Hash::make('password'),
+        //     'role' => 'admin',
+        //     'phone_number' => '1234567890',
+        //     'bio' => 'System Administrator',
+        // ]);
 
         // Create Coach User
         User::create([
@@ -77,11 +77,11 @@ class DatabaseSeeder extends Seeder
             'order' => 5
         ]);
 
-        $this->call([
-            ClientSeeder::class,
-            ProgramSeeder::class,
-            CommentSeeder::class,
-            ProgressLogSeeder::class,
-        ]);
+        // $this->call([
+        //     ClientSeeder::class,
+        //     ProgramSeeder::class,
+        //     CommentSeeder::class,
+        //     ProgressLogSeeder::class,
+        // ]);
     }
 }
