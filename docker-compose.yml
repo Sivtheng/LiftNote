@@ -58,15 +58,15 @@ services:
   #   networks:
   #     - liftnote
 
-  mailhog:
-    image: mailhog/mailhog
-    container_name: mailhog
-    restart: always
-    ports:
-      - "8042:8025"
-      - "1042:1025"
-    networks:
-      - liftnote
+  # mailhog:
+  #   image: mailhog/mailhog
+  #   container_name: mailhog
+  #   restart: always
+  #   ports:
+  #     - "8042:8025"
+  #     - "1042:1025"
+  #   networks:
+  #     - liftnote
 
 # volumes:
   # liftnote_db_data:
