@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LoginPage() {
@@ -9,6 +9,11 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -24,7 +29,8 @@ export default function LoginPage() {
         }
     };
 
-    if (isAuthLoading) {
+    // Show loading while auth context is initializing
+    if (!mounted || isAuthLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="text-gray-600">Loading...</div>
@@ -32,8 +38,13 @@ export default function LoginPage() {
         );
     }
 
+    // If already authenticated, redirect will be handled by AuthContext
     if (isAuthenticated) {
-        return null;
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-gray-600">Redirecting...</div>
+            </div>
+        );
     }
 
     return (
