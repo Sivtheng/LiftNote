@@ -5,22 +5,25 @@ This guide will help you set up Mailtrap for production email handling in your L
 ## 1. Mailtrap Account Setup
 
 ### Sign Up for Mailtrap
+
 1. Go to [Mailtrap.io](https://mailtrap.io)
 2. Create a free account
 3. Navigate to your inbox
 
 ### Get SMTP Credentials
+
 1. In your Mailtrap inbox, click on "Show Credentials"
 2. Select "SMTP" tab
 3. Note down:
    - **Host**: `smtp.mailtrap.io`
-   - **Port**: `2525`
+   - **Port**: `...`
    - **Username**: Your Mailtrap username
    - **Password**: Your Mailtrap password
 
 ## 2. Environment Configuration
 
 ### Production Environment Variables
+
 Add these to your production environment variables:
 
 ```bash
@@ -37,6 +40,7 @@ FRONTEND_URL="https://liftnote.xyz"
 ```
 
 ### DigitalOcean App Platform
+
 If using DigitalOcean App Platform, add these environment variables in your app settings:
 
 ```bash
@@ -48,6 +52,7 @@ FRONTEND_URL=https://liftnote.xyz
 ## 3. Testing the Configuration
 
 ### Test Mail Configuration
+
 After deployment, test your mail configuration:
 
 ```bash
@@ -62,10 +67,11 @@ php artisan mail:test your-email@example.com
 ```
 
 ### Expected Output
-```
+
+```bash
 Testing mail configuration...
 Mail Host: smtp.mailtrap.io
-Mail Port: 2525
+Mail Port: ...
 Mail Username: your_mailtrap_username
 From Address: noreply@liftnote.xyz
 To Address: your-email@example.com
@@ -80,6 +86,7 @@ Mailtrap URL: https://mailtrap.io/inboxes
 ## 4. Verify Email Functionality
 
 ### Test Password Reset
+
 1. Go to your application's login page
 2. Click "Forgot Password"
 3. Enter a valid email address
@@ -87,6 +94,7 @@ Mailtrap URL: https://mailtrap.io/inboxes
 5. Click the reset link to verify it works
 
 ### Check Mailtrap Inbox
+
 1. Log into [Mailtrap.io](https://mailtrap.io)
 2. Navigate to your inbox
 3. You should see the test emails and password reset emails
@@ -95,16 +103,19 @@ Mailtrap URL: https://mailtrap.io/inboxes
 ## 5. Production Considerations
 
 ### Email Limits
+
 - **Free Plan**: 100 emails/month
 - **Paid Plans**: Higher limits available
 - Monitor your usage in Mailtrap dashboard
 
 ### Security
+
 - Mailtrap credentials are secure and encrypted
 - All emails are caught and won't be delivered to real recipients
 - Perfect for testing and development
 
 ### Monitoring
+
 - Check Mailtrap dashboard regularly for email delivery
 - Monitor application logs for mail errors
 - Set up alerts for mail failures
@@ -114,21 +125,25 @@ Mailtrap URL: https://mailtrap.io/inboxes
 ### Common Issues
 
 #### "Connection refused" Error
+
 - Verify SMTP credentials
 - Check if port 2525 is open
 - Ensure TLS encryption is enabled
 
 #### "Authentication failed" Error
+
 - Double-check username and password
 - Ensure credentials are from the correct Mailtrap inbox
 - Try regenerating credentials in Mailtrap
 
 #### Emails not appearing in Mailtrap
+
 - Check application logs for mail errors
 - Verify environment variables are set correctly
 - Test with the `php artisan mail:test` command
 
 ### Debug Commands
+
 ```bash
 # Check current mail configuration
 php artisan config:show mail
@@ -152,6 +167,7 @@ When ready to send real emails to users:
    - Postmark
 
 2. **Update environment variables**:
+
    ```bash
    MAIL_HOST=your-production-smtp-host
    MAIL_PORT=587
@@ -164,6 +180,7 @@ When ready to send real emails to users:
 ## 8. Support
 
 For issues with:
+
 - **Mailtrap**: Contact Mailtrap support
 - **Application**: Check Laravel logs and application documentation
-- **Deployment**: Refer to your hosting provider's documentation 
+- **Deployment**: Refer to your hosting provider's documentation
