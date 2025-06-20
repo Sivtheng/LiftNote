@@ -1,5 +1,29 @@
 # LiftNote
 
+A comprehensive fitness application with Laravel backend and Next.js frontend.
+
+## Features
+
+- User authentication and authorization
+- Program management for coaches and clients
+- Progress tracking and logging
+- Questionnaire system
+- Comment system for programs
+- Mobile app support
+
+## Architecture
+
+- **Backend**: Laravel 10 with PHP 8.2
+- **Frontend**: Next.js 14 with TypeScript
+- **Mobile**: React Native
+- **Database**: MySQL
+- **File Storage**: DigitalOcean Spaces
+- **Deployment**: Docker with CI/CD via GitHub Actions
+
+## CI/CD Status
+
+GitHub Actions CI/CD is now configured and ready for deployment.
+
 ## Documentation
 
 - [Final Year Project Folder](https://drive.google.com/drive/u/0/folders/1kPP97n1sKqh-LCqieLprnH3BAr7joYo6)
