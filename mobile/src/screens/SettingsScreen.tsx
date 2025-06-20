@@ -178,6 +178,8 @@ export default function SettingsScreen({ navigation }: any) {
                 } finally {
                     setUploadingPicture(false);
                 }
+            } else if (profile?.profile_picture) {
+                updateData.profile_picture = profile.profile_picture;
             }
 
             // Update profile data (without profile picture if we already uploaded it)

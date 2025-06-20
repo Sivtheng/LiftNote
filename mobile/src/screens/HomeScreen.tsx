@@ -19,6 +19,7 @@ interface Comment {
     user: {
         name: string;
         role: string; // 'client' or 'coach'
+        profile_picture?: string;
     };
     created_at: string;
     media_type?: string | null;
@@ -32,6 +33,7 @@ interface TransformedComment {
     createdAt: Date;
     mediaType?: string | null;
     mediaUrl?: string | null;
+    profilePicture?: string | null;
 }
 
 export default function HomeScreen() {
@@ -144,7 +146,8 @@ export default function HomeScreen() {
                         isCoach: comment.user?.role === 'coach',
                         createdAt: new Date(comment.created_at),
                         mediaType: comment.media_type,
-                        mediaUrl: comment.media_url
+                        mediaUrl: comment.media_url,
+                        profilePicture: comment.user?.profile_picture || null,
                     }))
                     .sort((a: TransformedComment, b: TransformedComment) => b.createdAt.getTime() - a.createdAt.getTime()) // Sort by newest first
                     .slice(0, 5); // Limit to 5 comments
@@ -250,7 +253,17 @@ export default function HomeScreen() {
                     {recentComments && recentComments.length > 0 ? (
                         recentComments.map((comment, index) => (
                             <View key={index} style={styles.commentContainer}>
-                                <View style={styles.commentHeader}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                                    {comment.profilePicture ? (
+                                        <Image
+                                            source={{ uri: comment.profilePicture }}
+                                            style={{ width: 32, height: 32, borderRadius: 16, marginRight: 8, borderWidth: 1, borderColor: '#eee' }}
+                                        />
+                                    ) : (
+                                        <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#E5E7EB', justifyContent: 'center', alignItems: 'center', marginRight: 8 }}>
+                                            <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#374151' }}>{comment.author.charAt(0).toUpperCase()}</Text>
+                                        </View>
+                                    )}
                                     <Text style={[
                                         styles.commentAuthor,
                                         comment.isCoach && styles.coachComment

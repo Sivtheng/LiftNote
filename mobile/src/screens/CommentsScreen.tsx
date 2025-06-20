@@ -27,6 +27,7 @@ interface User {
     id: number;
     name: string;
     role: string;
+    profile_picture?: string;
 }
 
 interface Comment {
@@ -546,9 +547,16 @@ export default function CommentsScreen() {
                 <View style={styles.commentHeader}>
                     <View style={styles.userInfo}>
                         <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>
-                                {comment.user?.name?.charAt(0).toUpperCase() || '?'}
-                            </Text>
+                            {comment.user?.profile_picture ? (
+                                <Image
+                                    source={{ uri: comment.user.profile_picture }}
+                                    style={{ width: 40, height: 40, borderRadius: 20 }}
+                                />
+                            ) : (
+                                <Text style={styles.avatarText}>
+                                    {comment.user?.name?.charAt(0).toUpperCase() || '?'}
+                                </Text>
+                            )}
                         </View>
                         <View style={styles.userDetails}>
                             <Text style={styles.userName}>{comment.user?.name || 'Unknown User'}</Text>

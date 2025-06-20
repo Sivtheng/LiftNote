@@ -58,8 +58,14 @@ export default function Navbar() {
                         </Link>
                     </div>
 
-                    {/* Right - Logout */}
-                    <div className="flex items-center">
+                    {/* Right - Settings and Logout */}
+                    <div className="flex items-center space-x-4">
+                        <Link
+                            href="/settings"
+                            className="inline-block px-4 py-2 text-gray-600 bg-white hover:bg-indigo-50 hover:text-indigo-600 rounded-md transition-all duration-200 cursor-pointer"
+                        >
+                            Settings
+                        </Link>
                         <button
                             onClick={handleLogout}
                             className="inline-block px-4 py-2 text-gray-600 bg-white hover:bg-red-50 hover:text-red-600 rounded-md transition-all duration-200 cursor-pointer"
