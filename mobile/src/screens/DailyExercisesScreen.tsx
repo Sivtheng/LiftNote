@@ -416,8 +416,10 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
 
     if (loading) {
         return (
-            <SafeAreaView style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#007AFF" />
+            <SafeAreaView style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#007AFF" />
+                </View>
             </SafeAreaView>
         );
     }
@@ -429,10 +431,13 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <Ionicons name="chevron-back" size={24} color="#007AFF" />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Daily Exercises</Text>
                 </View>
                 <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>No program or exercises available</Text>
+                    <Ionicons name="fitness-outline" size={80} color="#ccc" />
+                    <Text style={styles.emptyText}>No program assigned</Text>
+                    <Text style={[styles.emptyText, { fontSize: 14, marginTop: 10 }]}>
+                        Contact your coach to get assigned a workout program
+                    </Text>
                 </View>
             </SafeAreaView>
         );

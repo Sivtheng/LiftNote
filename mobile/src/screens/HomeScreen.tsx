@@ -57,8 +57,18 @@ export default function HomeScreen() {
             setError(null);
             const programData = await programService.getClientPrograms();
 
+            // Handle case when client has no programs
             if (!programData || !programData.programs || programData.programs.length === 0) {
-                throw new Error('No program data available');
+                // Set default values for new clients with no programs
+                setClientName('Guest');
+                setCurrentWeek('No Program Assigned');
+                setCurrentDay('No Day Assigned');
+                setProgramName('No Program Assigned');
+                setCompletionPercentage(0);
+                setRecentComments([]);
+                setCurrentProgram(null);
+                setLoading(false);
+                return; // Exit early, don't throw error
             }
 
             // Get the first program from the array
@@ -193,15 +203,17 @@ export default function HomeScreen() {
                 <View style={styles.card}>
                     <View style={styles.cardHeader}>
                         <Text style={styles.cardTitle}>Recent Coach Comments</Text>
-                        <TouchableOpacity 
-                            onPress={() => navigation.navigate('Comments', {
-                                programId: currentProgram?.id.toString(),
-                                programTitle: programName
-                            })}
-                            style={styles.viewAllButton}
-                        >
-                            <Text style={styles.viewAllButtonText}>View All</Text>
-                        </TouchableOpacity>
+                        {currentProgram && (
+                            <TouchableOpacity 
+                                onPress={() => navigation.navigate('Comments', {
+                                    programId: currentProgram.id.toString(),
+                                    programTitle: programName
+                                })}
+                                style={styles.viewAllButton}
+                            >
+                                <Text style={styles.viewAllButtonText}>View All</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                     {recentComments && recentComments.length > 0 ? (
                         recentComments.map((comment, index) => (
@@ -231,27 +243,41 @@ export default function HomeScreen() {
                             </View>
                         ))
                     ) : (
-                        <Text style={styles.noCommentsText}>No recent coach comments</Text>
+                        <Text style={styles.noCommentsText}>
+                            {currentProgram ? 'No recent coach comments' : 'No comments available - no program assigned'}
+                        </Text>
                     )}
                 </View>
 
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Current Progress</Text>
                     <Text style={styles.cardText}>{currentWeek} - {currentDay}</Text>
-                    <TouchableOpacity 
-                        style={styles.startButton}
-                        onPress={() => navigation.navigate('DailyExercises')}
-                    >
-                        <Text style={styles.startButtonText}>Start Workout</Text>
-                    </TouchableOpacity>
+                    {currentProgram ? (
+                        <TouchableOpacity 
+                            style={styles.startButton}
+                            onPress={() => navigation.navigate('DailyExercises')}
+                        >
+                            <Text style={styles.startButtonText}>Start Workout</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={styles.disabledButton}>
+                            <Text style={styles.disabledButtonText}>No Program Assigned</Text>
+                        </View>
+                    )}
                 </View>
 
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>{programName}</Text>
-                    <View style={styles.progressBar}>
-                        <View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
-                    </View>
-                    <Text style={styles.cardText}>{completionPercentage}% Complete</Text>
+                    {currentProgram ? (
+                        <>
+                            <View style={styles.progressBar}>
+                                <View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
+                            </View>
+                            <Text style={styles.cardText}>{completionPercentage}% Complete</Text>
+                        </>
+                    ) : (
+                        <Text style={styles.cardText}>Contact your coach to get assigned a program</Text>
+                    )}
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -417,5 +443,17 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
         fontSize: 14,
         marginTop: 5,
+    },
+    disabledButton: {
+        backgroundColor: '#ccc',
+        padding: 15,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginTop: 15,
+    },
+    disabledButtonText: {
+        color: '#666',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 }); 
