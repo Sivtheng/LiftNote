@@ -23,6 +23,7 @@ export default function SettingsScreen({ navigation }: any) {
         name: string;
     } | null>(null);
     const [uploadingPicture, setUploadingPicture] = useState(false);
+    const [removeProfilePictureFlag, setRemoveProfilePictureFlag] = useState(false);
 
     useEffect(() => {
         loadProfile();
@@ -101,6 +102,7 @@ export default function SettingsScreen({ navigation }: any) {
 
     const removeProfilePicture = () => {
         setSelectedProfilePicture(null);
+        setRemoveProfilePictureFlag(true);
     };
 
     const handleUpdateProfile = async () => {
@@ -178,6 +180,8 @@ export default function SettingsScreen({ navigation }: any) {
                 } finally {
                     setUploadingPicture(false);
                 }
+            } else if (removeProfilePictureFlag) {
+                updateData.profile_picture = null;
             } else if (profile?.profile_picture) {
                 updateData.profile_picture = profile.profile_picture;
             }
@@ -187,6 +191,7 @@ export default function SettingsScreen({ navigation }: any) {
             setProfile(response.user);
             setShowEditProfile(false);
             setSelectedProfilePicture(null);
+            setRemoveProfilePictureFlag(false);
             Alert.alert('Success', 'Profile updated successfully');
         } catch (error: any) {
             console.error('Profile update error:', error);
