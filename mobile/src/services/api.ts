@@ -1,16 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Network configuration - Simplified for hosted database setup
-const NETWORK = 'development';
-
-const NETWORK_CONFIGS = {
-    development: 'http://192.168.43.233:8000/api', // Your computer's IP address
-    production: 'https://your-backend-domain.com/api', // Update with your production URL when deployed
-};
-
-// Use environment variable or fallback to network config
-const API_URL = process.env.API_URL || NETWORK_CONFIGS[NETWORK];
+// Production API configuration
+const API_URL = 'https://api-liftnote.xyz/api';
 
 console.log('Mobile app connecting to:', API_URL);
 

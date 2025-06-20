@@ -72,14 +72,13 @@ A React Native mobile application for the LiftNote fitness platform, built with 
 
 ### Environment Configuration
 
-The app uses a simplified network configuration since the database is hosted on DigitalOcean:
+The mobile app connects directly to the production backend hosted on DigitalOcean:
 
-- **Development**: `http://192.168.43.233:8000/api` (local Docker backend)
-- **Production**: `https://your-backend-domain.com/api` (when backend is deployed)
+- **Production API**: `https://api-liftnote.xyz/api`
 
-The mobile app connects to your local Docker backend, which in turn connects to the hosted DigitalOcean database. This eliminates the need for different network configurations.
+The mobile app connects to the hosted backend API, which provides all the necessary functionality including authentication, program management, progress logging, and media uploads.
 
-**Note**: Update the IP address in `src/services/api.ts` if your computer's IP changes.
+**Note**: The app is now configured to use the production backend by default. No local development setup is required.
 
 ## Media Upload Features
 
