@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use App\Services\MailService;
+use App\Services\SpacesService;
 
 class AuthController extends Controller
 {
@@ -745,6 +746,47 @@ class AuthController extends Controller
             Log::error('Password change error: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error changing password',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function uploadProfilePicture(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            $validator = Validator::make($request->all(), [
+                'profile_picture' => 'required|file|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB max
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $file = $request->file('profile_picture');
+            
+            // Upload to DigitalOcean Spaces
+            $spacesService = new SpacesService();
+            $imageUrl = $spacesService->uploadFile($file, 'profile-pictures');
+            
+            // Update user's profile picture
+            $user->update([
+                'profile_picture' => $imageUrl
+            ]);
+
+            return response()->json([
+                'message' => 'Profile picture uploaded successfully',
+                'profile_picture' => $imageUrl,
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Profile picture upload error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error uploading profile picture',
                 'error' => $e->getMessage()
             ], 500);
         }

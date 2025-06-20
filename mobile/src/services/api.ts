@@ -139,6 +139,49 @@ export const authService = {
             throw error;
         }
     },
+    uploadProfilePicture: async (formData: FormData) => {
+        try {
+            // Use a separate axios instance for FormData to avoid JSON headers
+            const formDataApi = axios.create({
+                baseURL: API_URL,
+                headers: {
+                    'Accept': 'application/json',
+                    // Don't set Content-Type for FormData - let the browser set it with boundary
+                },
+            });
+
+            // Add token to FormData requests
+            formDataApi.interceptors.request.use(
+                async (config) => {
+                    try {
+                        const token = await AsyncStorage.getItem('token');
+                        if (token) {
+                            config.headers.Authorization = `Bearer ${token}`;
+                        }
+                        return config;
+                    } catch (error) {
+                        console.error('Error getting token for FormData:', error);
+                        return config;
+                    }
+                },
+                (error) => {
+                    console.error('FormData request interceptor error:', error);
+                    return Promise.reject(error);
+                }
+            );
+
+            const response = await formDataApi.post('/profile/picture', formData);
+            return response.data;
+        } catch (error: any) {
+            console.error('Error uploading profile picture:', error);
+            if (error.response) {
+                console.error('Response data:', error.response.data);
+                console.error('Response status:', error.response.status);
+                console.error('Response headers:', error.response.headers);
+            }
+            throw error;
+        }
+    },
 };
 
 // Program Services
