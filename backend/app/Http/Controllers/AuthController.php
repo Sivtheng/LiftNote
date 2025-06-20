@@ -757,7 +757,7 @@ class AuthController extends Controller
             $user = $request->user();
             
             $validator = Validator::make($request->all(), [
-                'profile_picture' => 'required|file|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB max
+                'profile_picture' => 'required|file|image|mimes:jpeg,png,jpg,gif|max:102400', // 100MB max
             ]);
 
             if ($validator->fails()) {
