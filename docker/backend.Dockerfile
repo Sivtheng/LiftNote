@@ -77,5 +77,11 @@ RUN echo "extension=pdo_mysql.so" > /usr/local/etc/php/conf.d/docker-php-ext-pdo
     && echo "mysql.default_socket=" >> /usr/local/etc/php/conf.d/docker-php-ext-pdo_mysql.ini \
     && echo "mysqli.default_socket=" >> /usr/local/etc/php/conf.d/docker-php-ext-pdo_mysql.ini
 
+# Update PHP upload limits for file uploads
+RUN echo "upload_max_filesize = 100M" > /usr/local/etc/php/conf.d/upload-limits.ini \
+    && echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/upload-limits.ini \
+    && echo "max_file_uploads = 20" >> /usr/local/etc/php/conf.d/upload-limits.ini \
+    && echo "memory_limit = 256M" >> /usr/local/etc/php/conf.d/upload-limits.ini
+
 # Expose the app port
 EXPOSE 80
