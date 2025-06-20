@@ -8,11 +8,15 @@ on:
       - 'docker/backend.Dockerfile'
       - '.github/workflows/deploy-backend.yml'
       - 'docker-compose.prod.yml'
+      - 'nginx/**'
+      - 'nginx/liftnote.conf'
   pull_request:
     branches: [ main ]
     paths:
       - 'backend/**'
       - 'docker/backend.Dockerfile'
+      - 'nginx/**'
+      - 'nginx/liftnote.conf'
 
 jobs:
   deploy:
