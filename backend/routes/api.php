@@ -25,6 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/profile/picture', [AuthController::class, 'uploadProfilePicture']);
     Route::delete('/profile', [AuthController::class, 'deleteProfile']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
+    Route::post('/push-token', [AuthController::class, 'updatePushToken']);
     Route::get('/users', [AuthController::class, 'getUsers']);
     Route::get('/users/{user}', [AuthController::class, 'getUser']);
     Route::post('/users', [AuthController::class, 'createClient']);

@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\Rule;
 use App\Services\SpacesService;
+use App\Services\NotificationService;
 use Illuminate\Support\Str;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
@@ -18,10 +19,12 @@ class CommentController extends Controller
     use AuthorizesRequests;
 
     protected $spacesService;
+    protected $notificationService;
 
-    public function __construct(SpacesService $spacesService)
+    public function __construct(SpacesService $spacesService, NotificationService $notificationService)
     {
         $this->spacesService = $spacesService;
+        $this->notificationService = $notificationService;
     }
 
     public function index(Program $program)
@@ -170,6 +173,19 @@ class CommentController extends Controller
 
             // Load the comment with user and replies relationships
             $comment->load('user');
+            
+            // Send notification if coach is commenting on client's program
+            if ($user->isCoach() && $program->client_id !== $user->id) {
+                $client = $program->client;
+                $isReply = !empty($validated['parent_id']);
+                
+                $this->notificationService->sendCommentNotification(
+                    $client,
+                    $user->name,
+                    $program->title,
+                    $isReply
+                );
+            }
             
             // If this is a reply, load the parent comment's replies to maintain structure
             if ($comment->parent_id) {
