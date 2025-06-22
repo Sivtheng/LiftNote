@@ -16,11 +16,42 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
     const [programs, setPrograms] = useState<Program[]>([]);
     const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
     const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([]);
+    const [selectedProgramId, setSelectedProgramId] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string>('');
     const [activeTab, setActiveTab] = useState<'programs' | 'questionnaire' | 'progress-logs'>('programs');
 
     const { id } = use(params);
+
+    // Function to fetch progress logs for a specific program
+    const fetchProgressLogs = async (programId: number) => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            console.log(`Fetching progress logs for program ${programId}`);
+            const progressResponse = await fetch(`${API_CONFIG.BASE_URL}/programs/${programId}/progress/coach`, {
+                headers: getAuthHeaders(token)
+            });
+            
+            console.log(`Progress response status for program ${programId}:`, progressResponse.status);
+            
+            if (progressResponse.ok) {
+                const progressData = await progressResponse.json();
+                console.log(`Progress data for program ${programId}:`, progressData);
+                setProgressLogs(progressData.logs || []);
+            } else {
+                const errorText = await progressResponse.text();
+                console.error(`Failed to fetch progress logs for program ${programId}:`, progressResponse.status, errorText);
+                setProgressLogs([]);
+            }
+        } catch (error) {
+            console.error(`Error fetching progress logs for program ${programId}:`, error);
+            setProgressLogs([]);
+        }
+    };
 
     useEffect(() => {
         const fetchClientData = async () => {
@@ -72,37 +103,12 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                 const clientPrograms = programsData.programs.filter((p: Program) => p.client_id === clientId);
                 setPrograms(clientPrograms);
 
-                // Fetch progress logs for all client's programs
-                const allProgressLogs: ProgressLog[] = [];
-                console.log('Fetching progress logs for programs:', clientPrograms.map(p => ({ id: p.id, title: p.title })));
-                
-                for (const program of clientPrograms) {
-                    try {
-                        console.log(`Fetching progress logs for program ${program.id} (${program.title})`);
-                        const progressResponse = await fetch(`${API_CONFIG.BASE_URL}/programs/${program.id}/progress/coach`, {
-                            headers: getAuthHeaders(token)
-                        });
-                        
-                        console.log(`Progress response status for program ${program.id}:`, progressResponse.status);
-                        
-                        if (progressResponse.ok) {
-                            const progressData = await progressResponse.json();
-                            console.log(`Progress data for program ${program.id}:`, progressData);
-                            allProgressLogs.push(...progressData.logs);
-                        } else {
-                            const errorText = await progressResponse.text();
-                            console.error(`Failed to fetch progress logs for program ${program.id}:`, progressResponse.status, errorText);
-                        }
-                    } catch (error) {
-                        console.error(`Error fetching progress logs for program ${program.id}:`, error);
-                    }
+                // Set the first program as selected by default
+                if (clientPrograms.length > 0) {
+                    setSelectedProgramId(clientPrograms[0].id);
+                    // Fetch progress logs for the first program
+                    await fetchProgressLogs(clientPrograms[0].id);
                 }
-                
-                console.log('All progress logs collected:', allProgressLogs);
-                
-                // Sort progress logs by completed_at date (newest first)
-                allProgressLogs.sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime());
-                setProgressLogs(allProgressLogs);
             } catch (error) {
                 console.error('Error fetching client data:', error);
                 setError(error instanceof Error ? error.message : 'Failed to fetch client data');
@@ -115,6 +121,13 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
             fetchClientData();
         }
     }, [isAuthenticated, id]);
+
+    // Effect to fetch progress logs when selected program changes
+    useEffect(() => {
+        if (selectedProgramId && activeTab === 'progress-logs') {
+            fetchProgressLogs(selectedProgramId);
+        }
+    }, [selectedProgramId, activeTab]);
 
     if (isAuthLoading || isLoading) {
         return (
@@ -305,91 +318,114 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
 
                         {activeTab === 'progress-logs' && (
                             <div>
+                                {/* Program Selector */}
+                                {programs.length > 0 && (
+                                    <div className="mb-6">
+                                        <label htmlFor="program-select" className="block text-sm font-medium text-gray-700 mb-2">
+                                            Select Program
+                                        </label>
+                                        <select
+                                            id="program-select"
+                                            value={selectedProgramId || ''}
+                                            onChange={(e) => setSelectedProgramId(Number(e.target.value))}
+                                            className="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                        >
+                                            {programs.map((program) => (
+                                                <option key={program.id} value={program.id}>
+                                                    {program.title}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
                                 {progressLogs.length > 0 ? (
-                                    <div className="space-y-6">
-                                        {progressLogs.map((log) => (
-                                            <div key={log.id} className="bg-white border border-gray-200 rounded-lg p-6">
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div>
-                                                        <h3 className="text-lg font-medium text-gray-900">
-                                                            {log.is_rest_day ? 'Rest Day' : log.exercise?.name || 'Workout'}
-                                                        </h3>
-                                                        <p className="mt-1 text-sm text-gray-600">
-                                                            {new Date(log.completed_at).toLocaleDateString()} at {new Date(log.completed_at).toLocaleTimeString()}
-                                                        </p>
-                                                        {log.week && log.day && (
-                                                            <p className="mt-1 text-sm text-gray-500">
-                                                                {log.week.name} - {log.day.name}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                        log.is_rest_day ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                                                    }`}>
-                                                        {log.is_rest_day ? 'Rest Day' : 'Completed'}
-                                                    </span>
-                                                </div>
-
-                                                {!log.is_rest_day && log.exercise && (
-                                                    <div className="mt-4 space-y-3">
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            {log.weight && (
-                                                                <div className="bg-gray-50 rounded-lg p-3">
-                                                                    <h4 className="text-xs font-medium text-gray-500">Weight</h4>
-                                                                    <p className="mt-1 text-lg font-semibold text-gray-900">{log.weight} kg</p>
+                                    <div className="overflow-x-auto">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Date & Time
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Exercise
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Week/Day
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Details
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Status
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {progressLogs.map((log) => (
+                                                    <tr key={log.id} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            <div>
+                                                                <div className="font-medium">
+                                                                    {new Date(log.completed_at).toLocaleDateString()}
                                                                 </div>
-                                                            )}
-                                                            {log.reps && (
-                                                                <div className="bg-gray-50 rounded-lg p-3">
-                                                                    <h4 className="text-xs font-medium text-gray-500">Reps</h4>
-                                                                    <p className="mt-1 text-lg font-semibold text-gray-900">{log.reps}</p>
+                                                                <div className="text-gray-500">
+                                                                    {new Date(log.completed_at).toLocaleTimeString()}
                                                                 </div>
-                                                            )}
-                                                            {log.time_seconds && (
-                                                                <div className="bg-gray-50 rounded-lg p-3">
-                                                                    <h4 className="text-xs font-medium text-gray-500">Time</h4>
-                                                                    <p className="mt-1 text-lg font-semibold text-gray-900">{log.time_seconds}s</p>
-                                                                </div>
-                                                            )}
-                                                            {log.rpe && (
-                                                                <div className="bg-gray-50 rounded-lg p-3">
-                                                                    <h4 className="text-xs font-medium text-gray-500">RPE</h4>
-                                                                    <p className="mt-1 text-lg font-semibold text-gray-900">{log.rpe}</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        
-                                                        {log.workout_duration && (
-                                                            <div className="bg-gray-50 rounded-lg p-3">
-                                                                <h4 className="text-xs font-medium text-gray-500">Workout Duration</h4>
-                                                                <p className="mt-1 text-lg font-semibold text-gray-900">{log.workout_duration} minutes</p>
                                                             </div>
-                                                        )}
-                                                    </div>
-                                                )}
-
-                                                {log.is_rest_day && (
-                                                    <div className="mt-4 bg-blue-50 rounded-lg p-4">
-                                                        <div className="flex items-center">
-                                                            <svg className="h-5 w-5 text-blue-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
-                                                            <p className="text-blue-800 font-medium">Rest day completed</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Comments count */}
-                                                {log.comments && log.comments.length > 0 && (
-                                                    <div className="mt-4 flex items-center text-sm text-gray-500">
-                                                        <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                                        </svg>
-                                                        {log.comments.length} comment{log.comments.length !== 1 ? 's' : ''}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {log.is_rest_day ? (
+                                                                <span className="text-blue-600 font-medium">Rest Day</span>
+                                                            ) : (
+                                                                <span className="font-medium">{log.exercise?.name || 'Unknown Exercise'}</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {log.week && log.day ? (
+                                                                <div>
+                                                                    <div className="font-medium">{log.week.name}</div>
+                                                                    <div className="text-gray-500">{log.day.name}</div>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-gray-500">N/A</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                            {!log.is_rest_day && (
+                                                                <div className="space-y-1">
+                                                                    {log.weight && (
+                                                                        <div><span className="text-gray-500">Weight:</span> {log.weight} kg</div>
+                                                                    )}
+                                                                    {log.reps && (
+                                                                        <div><span className="text-gray-500">Reps:</span> {log.reps}</div>
+                                                                    )}
+                                                                    {log.time_seconds && (
+                                                                        <div><span className="text-gray-500">Time:</span> {log.time_seconds}s</div>
+                                                                    )}
+                                                                    {log.rpe && (
+                                                                        <div><span className="text-gray-500">RPE:</span> {log.rpe}</div>
+                                                                    )}
+                                                                    {log.workout_duration && (
+                                                                        <div><span className="text-gray-500">Duration:</span> {log.workout_duration} min</div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                            {log.is_rest_day && (
+                                                                <span className="text-blue-600">Rest day completed</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                                log.is_rest_day ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                                                            }`}>
+                                                                {log.is_rest_day ? 'Rest Day' : 'Completed'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 ) : (
                                     <div className="text-center py-12">
@@ -399,7 +435,12 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                                             </svg>
                                         </div>
                                         <h3 className="text-lg font-medium text-gray-900 mb-2">No Progress Logs</h3>
-                                        <p className="text-gray-500">This client doesn't have any progress logs yet.</p>
+                                        <p className="text-gray-500">
+                                            {selectedProgramId 
+                                                ? "This program doesn't have any progress logs yet." 
+                                                : "Select a program to view progress logs."
+                                            }
+                                        </p>
                                     </div>
                                 )}
                             </div>

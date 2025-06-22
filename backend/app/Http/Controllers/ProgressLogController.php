@@ -140,6 +140,41 @@ class ProgressLogController extends Controller
 
             \Log::info('Validation passed', ['validated_data' => $validated]);
 
+            // Check for duplicate progress log (same exercise, same day, same user)
+            $existingLog = ProgressLog::where('program_id', $program->id)
+                ->where('user_id', Auth::id())
+                ->where('day_id', $request->day_id)
+                ->whereDate('completed_at', $request->completed_at);
+
+            // For rest days, check if any rest day log exists for this day
+            if ($request->is_rest_day) {
+                $existingLog = $existingLog->where('is_rest_day', true);
+            } else {
+                // For exercise logs, check if the same exercise was already logged
+                $existingLog = $existingLog->where('exercise_id', $request->exercise_id);
+            }
+
+            $existingLog = $existingLog->first();
+
+            if ($existingLog) {
+                \Log::warning('Duplicate progress log attempt', [
+                    'existing_log_id' => $existingLog->id,
+                    'program_id' => $program->id,
+                    'user_id' => Auth::id(),
+                    'day_id' => $request->day_id,
+                    'exercise_id' => $request->exercise_id,
+                    'is_rest_day' => $request->is_rest_day,
+                    'completed_at' => $request->completed_at
+                ]);
+
+                return response()->json([
+                    'message' => $request->is_rest_day 
+                        ? 'Rest day already logged for this day'
+                        : 'Progress log already exists for this exercise on this day',
+                    'log' => $existingLog
+                ], 409); // Conflict status code
+            }
+
             // Create the progress log
             $progressLog = ProgressLog::create([
                 'program_id' => $program->id,
