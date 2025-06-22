@@ -974,7 +974,12 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                 )}
                                 <div className="relative" ref={dropdownRef}>
                                     <button
-                                        onClick={() => setShowWeekDropdown(showWeekDropdown === week.id ? null : week.id)}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            console.log('Week dropdown toggle clicked', { weekId: week.id, currentState: showWeekDropdown });
+                                            setShowWeekDropdown(showWeekDropdown === week.id ? null : week.id);
+                                        }}
                                         className="p-2 hover:bg-gray-100 rounded-lg"
                                         aria-haspopup="true"
                                     >
@@ -983,21 +988,47 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                         </svg>
                                     </button>
                                     {showWeekDropdown === week.id && (
-                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10">
+                                        <div 
+                                            className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                console.log('Week dropdown menu clicked', { weekId: week.id });
+                                            }}
+                                            role="menu"
+                                        >
                                             <button
-                                                onClick={() => handleWeekAction(week.id, 'rename')}
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    console.log('Week rename button clicked', { weekId: week.id });
+                                                    handleWeekAction(week.id, 'rename');
+                                                }}
                                                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                             >
                                                 Rename
                                             </button>
                                             <button
-                                                onClick={() => handleWeekAction(week.id, 'duplicate')}
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    console.log('Week duplicate button clicked', { weekId: week.id });
+                                                    handleWeekAction(week.id, 'duplicate');
+                                                }}
                                                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                             >
                                                 Duplicate
                                             </button>
                                             <button
-                                                onClick={() => handleWeekAction(week.id, 'delete')}
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    console.log('Week delete button clicked', { weekId: week.id });
+                                                    handleWeekAction(week.id, 'delete');
+                                                }}
                                                 className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                                             >
                                                 Delete
