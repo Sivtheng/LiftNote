@@ -9,17 +9,14 @@ use Illuminate\Support\Facades\Auth;
 use App\Traits\HandlesResponses;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\ProgramWeek;
-use App\Services\NotificationService;
 
 class ProgramController extends Controller
 {
     use HandlesResponses;
 
-    protected $notificationService;
-
-    public function __construct(NotificationService $notificationService)
+    public function __construct()
     {
-        $this->notificationService = $notificationService;
+        // Constructor without notification service
     }
 
     // Create a new program for a client (Coach/Admin only)
@@ -129,18 +126,6 @@ class ProgramController extends Controller
                 ]);
 
                 $program->update($validated);
-
-                // Send notification to client when coach updates program
-                $user = Auth::user();
-                if ($user->isCoach() && $program->client_id !== $user->id) {
-                    $client = $program->client;
-                    $this->notificationService->sendProgramUpdateNotification(
-                        $client,
-                        $user->name,
-                        $program->title,
-                        'program_updated'
-                    );
-                }
 
                 return response()->json([
                     'message' => 'Program updated successfully',

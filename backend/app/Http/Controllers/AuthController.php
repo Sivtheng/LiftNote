@@ -793,38 +793,4 @@ class AuthController extends Controller
             ], 500);
         }
     }
-
-    // Update push token for mobile notifications
-    public function updatePushToken(Request $request)
-    {
-        try {
-            $user = $request->user();
-            
-            $validator = Validator::make($request->all(), [
-                'push_token' => 'required|string',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $user->update([
-                'push_token' => $request->push_token
-            ]);
-
-            return response()->json([
-                'message' => 'Push token updated successfully',
-                'user' => $user
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Push token update error: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Error updating push token',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
 }
