@@ -285,12 +285,15 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
 
             switch (action) {
                 case 'duplicate': {
+                    console.log('Starting duplicate week process...', { weekId, programId: resolvedParams.id });
                     const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/duplicate`, {
                         method: 'POST',
                         headers: getAuthHeaders(token)
                     });
 
+                    console.log('Duplicate week response status:', response.status);
                     const data = await response.json();
+                    console.log('Duplicate week response data:', data);
 
                     if (!response.ok) {
                         console.error('Failed to duplicate week:', {
@@ -302,8 +305,11 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                     }
 
                     if (!data.week) {
+                        console.error('Invalid response format: week data missing', data);
                         throw new Error('Invalid response format: week data missing');
                     }
+
+                    console.log('Processing duplicated week data:', data.week);
 
                     // Process the new week data to ensure unique IDs
                     const newWeek = {
@@ -326,9 +332,12 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                         }))
                     };
 
+                    console.log('Processed new week:', newWeek);
+
                     setWeeks(prevWeeks => {
                         const updatedWeeks = [...prevWeeks];
                         updatedWeeks.splice(weekIndex + 1, 0, newWeek);
+                        console.log('Updated weeks state:', updatedWeeks);
                         return updatedWeeks;
                     });
                     break;
