@@ -168,12 +168,29 @@ export default function CreateProgramPage() {
                                     Program Duration (weeks)
                                 </label>
                                 <input
-                                    type="number"
+                                    type="text"
                                     id="total_weeks"
-                                    min="1"
-                                    max="52"
-                                    value={formData.total_weeks}
-                                    onChange={(e) => setFormData({ ...formData, total_weeks: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                                    value={formData.total_weeks || ''}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        // Only allow numbers
+                                        if (value === '' || /^\d+$/.test(value)) {
+                                            const numValue = value === '' ? 0 : parseInt(value);
+                                            if (numValue >= 1 && numValue <= 52) {
+                                                setFormData({ ...formData, total_weeks: numValue });
+                                            } else if (value === '') {
+                                                setFormData({ ...formData, total_weeks: 0 });
+                                            }
+                                        }
+                                    }}
+                                    onBlur={(e) => {
+                                        const value = parseInt(e.target.value);
+                                        if (isNaN(value) || value < 1) {
+                                            setFormData({ ...formData, total_weeks: 1 });
+                                        } else if (value > 52) {
+                                            setFormData({ ...formData, total_weeks: 52 });
+                                        }
+                                    }}
                                     className="block w-full px-4 py-3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-gray-900 text-lg"
                                     required
                                 />

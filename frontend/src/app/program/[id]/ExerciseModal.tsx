@@ -33,7 +33,7 @@ export default function ExerciseModal({
     editingExercise 
 }: ExerciseModalProps) {
     const [name, setName] = useState('');
-    const [sets, setSets] = useState(1);
+    const [sets, setSets] = useState('1');
     const [repTimeType, setRepTimeType] = useState<'reps' | 'time'>('reps');
     const [reps, setReps] = useState<number | undefined>(undefined);
     const [timeSeconds, setTimeSeconds] = useState<number | undefined>(undefined);
@@ -46,12 +46,12 @@ export default function ExerciseModal({
     useEffect(() => {
         if (editingExercise) {
             setName(editingExercise.name);
-            setSets(editingExercise.sets);
+            setSets(editingExercise.sets.toString());
             setRepTimeType(editingExercise.reps ? 'reps' : 'time');
-            setReps(editingExercise.reps);
-            setTimeSeconds(editingExercise.time_seconds);
+            setReps(editingExercise.reps || undefined);
+            setTimeSeconds(editingExercise.time_seconds || undefined);
             setMeasurementType(editingExercise.measurement_type);
-            setMeasurementValue(editingExercise.measurement_value);
+            setMeasurementValue(editingExercise.measurement_value || 0);
             setDescription(editingExercise.description || '');
             setVideoLink(editingExercise.video_link || '');
         } else {
@@ -84,7 +84,7 @@ export default function ExerciseModal({
         const exerciseData = {
             id: editingExercise?.id || '',
             name,
-            sets,
+            sets: parseInt(sets),
             reps: repTimeType === 'reps' ? reps : undefined,
             time_seconds: repTimeType === 'time' ? timeSeconds : undefined,
             measurement_type: measurementType,
@@ -104,7 +104,7 @@ export default function ExerciseModal({
 
     const resetForm = () => {
         setName('');
-        setSets(1);
+        setSets('1');
         setRepTimeType('reps');
         setReps(undefined);
         setTimeSeconds(undefined);
@@ -152,11 +152,23 @@ export default function ExerciseModal({
                         <div>
                             <label htmlFor="sets" className="block text-sm font-medium text-gray-700">Sets</label>
                             <input
-                                type="number"
+                                type="text"
                                 id="sets"
                                 value={sets}
-                                onChange={(e) => setSets(parseInt(e.target.value))}
-                                min="1"
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    // Only allow numbers
+                                    if (value === '' || /^\d+$/.test(value)) {
+                                        setSets(value);
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    // Set fallback value when field loses focus
+                                    if (e.target.value === '') {
+                                        setSets('1');
+                                    }
+                                }}
+                                placeholder="Enter number of sets"
                                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
                                 required
                             />
@@ -179,11 +191,20 @@ export default function ExerciseModal({
                             <div>
                                 <label htmlFor="reps" className="block text-sm font-medium text-gray-700">Reps</label>
                                 <input
-                                    type="number"
+                                    type="text"
                                     id="reps"
-                                    value={reps || ''}
-                                    onChange={(e) => setReps(e.target.value ? parseInt(e.target.value) : undefined)}
-                                    min="1"
+                                    value={reps ?? ''}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        // Only allow numbers
+                                        if (value === '' || /^\d+$/.test(value)) {
+                                            const numValue = value === '' ? undefined : parseInt(value);
+                                            if (numValue === undefined || numValue >= 1) {
+                                                setReps(numValue);
+                                            }
+                                        }
+                                    }}
+                                    placeholder="Enter number of reps"
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
                                     required
                                 />
@@ -192,11 +213,20 @@ export default function ExerciseModal({
                             <div>
                                 <label htmlFor="time" className="block text-sm font-medium text-gray-700">Time (seconds)</label>
                                 <input
-                                    type="number"
+                                    type="text"
                                     id="time"
-                                    value={timeSeconds || ''}
-                                    onChange={(e) => setTimeSeconds(e.target.value ? parseInt(e.target.value) : undefined)}
-                                    min="1"
+                                    value={timeSeconds ?? ''}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        // Only allow numbers
+                                        if (value === '' || /^\d+$/.test(value)) {
+                                            const numValue = value === '' ? undefined : parseInt(value);
+                                            if (numValue === undefined || numValue >= 1) {
+                                                setTimeSeconds(numValue);
+                                            }
+                                        }
+                                    }}
+                                    placeholder="Enter time in seconds"
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
                                     required
                                 />
@@ -221,12 +251,20 @@ export default function ExerciseModal({
                                 {measurementType === 'kg' ? 'Weight (kg)' : 'RPE Value'}
                             </label>
                             <input
-                                type="number"
+                                type="text"
                                 id="measurementValue"
-                                value={measurementValue}
-                                onChange={(e) => setMeasurementValue(parseFloat(e.target.value))}
-                                min="0"
-                                step={measurementType === 'kg' ? "0.5" : "0.1"}
+                                value={measurementValue || 0}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    // Allow numbers and decimals
+                                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                        const numValue = value === '' ? 0 : parseFloat(value);
+                                        if (!isNaN(numValue) && numValue >= 0) {
+                                            setMeasurementValue(numValue);
+                                        }
+                                    }
+                                }}
+                                placeholder={measurementType === 'kg' ? 'Enter weight in kg' : 'Enter RPE value'}
                                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-900"
                                 required
                             />

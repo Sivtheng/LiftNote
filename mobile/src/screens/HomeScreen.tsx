@@ -298,12 +298,19 @@ export default function HomeScreen() {
                     <Text style={styles.cardTitle}>Current Progress</Text>
                     <Text style={styles.cardText}>{currentWeek} - {currentDay}</Text>
                     {currentProgram ? (
-                        <TouchableOpacity 
-                            style={styles.startButton}
-                            onPress={() => navigation.navigate('DailyExercises')}
-                        >
-                            <Text style={styles.startButtonText}>Start Workout</Text>
-                        </TouchableOpacity>
+                        // Check if there are weeks and days assigned
+                        (currentWeek !== 'No Week Assigned' && currentDay !== 'No Day Assigned') ? (
+                            <TouchableOpacity 
+                                style={styles.startButton}
+                                onPress={() => navigation.navigate('DailyExercises')}
+                            >
+                                <Text style={styles.startButtonText}>Start Workout</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <View style={styles.disabledButton}>
+                                <Text style={styles.disabledButtonText}>No Workout Available</Text>
+                            </View>
+                        )
                     ) : (
                         <View style={styles.disabledButton}>
                             <Text style={styles.disabledButtonText}>No Program Assigned</Text>

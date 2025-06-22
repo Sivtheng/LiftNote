@@ -20,6 +20,9 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string>('');
     const [activeTab, setActiveTab] = useState<'programs' | 'questionnaire' | 'progress-logs'>('programs');
+    const [selectedSets, setSelectedSets] = useState<ProgressLog[]>([]);
+    const [isSetsModalOpen, setIsSetsModalOpen] = useState(false);
+    const [selectedExerciseName, setSelectedExerciseName] = useState<string>('');
 
     const { id } = use(params);
 
@@ -51,6 +54,20 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
             console.error(`Error fetching progress logs for program ${programId}:`, error);
             setProgressLogs([]);
         }
+    };
+
+    // Function to open sets modal
+    const openSetsModal = (sets: ProgressLog[], exerciseName: string) => {
+        setSelectedSets(sets);
+        setSelectedExerciseName(exerciseName);
+        setIsSetsModalOpen(true);
+    };
+
+    // Function to close sets modal
+    const closeSetsModal = () => {
+        setIsSetsModalOpen(false);
+        setSelectedSets([]);
+        setSelectedExerciseName('');
     };
 
     useEffect(() => {
@@ -340,98 +357,184 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                                 )}
 
                                 {progressLogs.length > 0 ? (
-                                    <div className="overflow-x-auto">
-                                        <table className="min-w-full divide-y divide-gray-200">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        Date & Time
-                                                    </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        Exercise
-                                                    </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        Week/Day
-                                                    </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        Details
-                                                    </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                        Status
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {progressLogs.map((log) => (
-                                                    <tr key={log.id} className="hover:bg-gray-50">
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            <div>
-                                                                <div className="font-medium">
-                                                                    {new Date(log.completed_at).toLocaleDateString()}
-                                                                </div>
-                                                                <div className="text-gray-500">
-                                                                    {new Date(log.completed_at).toLocaleTimeString()}
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {log.is_rest_day ? (
-                                                                <span className="text-blue-600 font-medium">Rest Day</span>
-                                                            ) : (
-                                                                <span className="font-medium">{log.exercise?.name || 'Unknown Exercise'}</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {log.week && log.day ? (
-                                                                <div>
-                                                                    <div className="font-medium">{log.week.name}</div>
-                                                                    <div className="text-gray-500">{log.day.name}</div>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-gray-500">N/A</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                            {!log.is_rest_day && (
-                                                                <div className="space-y-1">
-                                                                    {log.weight && (
-                                                                        <div><span className="text-gray-500">Weight:</span> {log.weight} kg</div>
-                                                                    )}
-                                                                    {log.reps && (
-                                                                        <div><span className="text-gray-500">Reps:</span> {log.reps}</div>
-                                                                    )}
-                                                                    {log.time_seconds && (
-                                                                        <div><span className="text-gray-500">Time:</span> {log.time_seconds}s</div>
-                                                                    )}
-                                                                    {log.rpe && (
-                                                                        <div><span className="text-gray-500">RPE:</span> {log.rpe}</div>
-                                                                    )}
-                                                                    {log.workout_duration && (
-                                                                        <div><span className="text-gray-500">Duration:</span> {log.workout_duration} min</div>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                            {log.is_rest_day && (
-                                                                <span className="text-blue-600">Rest day completed</span>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap">
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                                log.is_rest_day ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                                                            }`}>
-                                                                {log.is_rest_day ? 'Rest Day' : 'Completed'}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                    <div className="space-y-8">
+                                        {/* Group logs by week */}
+                                        {(() => {
+                                            const logsByWeek = progressLogs.reduce((acc, log) => {
+                                                const weekName = log.week?.name || 'Unknown Week';
+                                                if (!acc[weekName]) {
+                                                    acc[weekName] = [];
+                                                }
+                                                acc[weekName].push(log);
+                                                return acc;
+                                            }, {} as Record<string, ProgressLog[]>);
+
+                                            // Sort weeks by their order
+                                            const sortedWeeks = Object.keys(logsByWeek).sort((a, b) => {
+                                                const aOrder = parseInt(a.match(/\d+/)?.[0] || '0');
+                                                const bOrder = parseInt(b.match(/\d+/)?.[0] || '0');
+                                                return aOrder - bOrder;
+                                            });
+
+                                            return sortedWeeks.map((weekName) => {
+                                                // Group logs by day within each week
+                                                const logsByDay = logsByWeek[weekName].reduce((acc, log) => {
+                                                    const dayName = log.day?.name || 'Unknown Day';
+                                                    const dayKey = `${dayName}_${log.completed_at.split('T')[0]}`; // Include date to handle multiple days with same name
+                                                    
+                                                    if (!acc[dayKey]) {
+                                                        acc[dayKey] = {
+                                                            dayName,
+                                                            date: log.completed_at.split('T')[0],
+                                                            exercises: {} as Record<string, ProgressLog[]>,
+                                                            restDays: [] as ProgressLog[]
+                                                        };
+                                                    }
+                                                    
+                                                    if (log.is_rest_day) {
+                                                        acc[dayKey].restDays.push(log);
+                                                    } else {
+                                                        const exerciseKey = log.exercise?.name || 'Unknown Exercise';
+                                                        if (!acc[dayKey].exercises[exerciseKey]) {
+                                                            acc[dayKey].exercises[exerciseKey] = [];
+                                                        }
+                                                        acc[dayKey].exercises[exerciseKey].push(log);
+                                                    }
+                                                    
+                                                    return acc;
+                                                }, {} as Record<string, any>);
+
+                                                // Sort days by their order
+                                                const sortedDays = Object.keys(logsByDay).sort((a, b) => {
+                                                    const aOrder = parseInt(a.match(/\d+/)?.[0] || '0');
+                                                    const bOrder = parseInt(b.match(/\d+/)?.[0] || '0');
+                                                    return aOrder - bOrder;
+                                                });
+
+                                                return (
+                                                    <div key={weekName} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                                                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                                                            <h3 className="text-lg font-semibold text-gray-900">{weekName}</h3>
+                                                            <p className="text-sm text-gray-600">
+                                                                {Object.keys(logsByDay).length} day{Object.keys(logsByDay).length !== 1 ? 's' : ''}
+                                                            </p>
+                                                        </div>
+                                                        
+                                                        <div className="divide-y divide-gray-200">
+                                                            {sortedDays.map((dayKey) => {
+                                                                const dayData = logsByDay[dayKey];
+                                                                const totalExercises = Object.keys(dayData.exercises).length + dayData.restDays.length;
+                                                                
+                                                                return (
+                                                                    <div key={dayKey} className="p-6">
+                                                                        <div className="mb-4">
+                                                                            <h4 className="text-md font-semibold text-gray-900">{dayData.dayName}</h4>
+                                                                            <p className="text-sm text-gray-600">
+                                                                                {new Date(dayData.date).toLocaleDateString()} • {totalExercises} item{totalExercises !== 1 ? 's' : ''}
+                                                                            </p>
+                                                                        </div>
+                                                                        
+                                                                        <div className="space-y-4">
+                                                                            {/* Rest Days */}
+                                                                            {dayData.restDays.map((log: ProgressLog) => (
+                                                                                <div key={log.id} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                                                                    <div className="flex items-center justify-between">
+                                                                                        <div className="flex items-center">
+                                                                                            <svg className="h-5 w-5 text-blue-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                                            </svg>
+                                                                                            <span className="font-medium text-blue-900">Rest Day</span>
+                                                                                        </div>
+                                                                                        <span className="text-sm text-blue-600">
+                                                                                            {new Date(log.completed_at).toLocaleTimeString()}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            ))}
+                                                                            
+                                                                            {/* Exercises */}
+                                                                            {Object.entries(dayData.exercises).map(([exerciseName, logs]) => {
+                                                                                const exerciseLogs = logs as ProgressLog[];
+                                                                                const setCount = exerciseLogs.length;
+                                                                                const avgWeight = exerciseLogs.reduce((sum, log) => sum + (log.weight || 0), 0) / setCount;
+                                                                                const avgReps = exerciseLogs.reduce((sum, log) => sum + (log.reps || 0), 0) / setCount;
+                                                                                const avgTime = exerciseLogs.reduce((sum, log) => sum + (log.time_seconds || 0), 0) / setCount;
+                                                                                const avgRPE = exerciseLogs.reduce((sum, log) => sum + (log.rpe || 0), 0) / setCount;
+                                                                                const totalDuration = exerciseLogs.reduce((sum, log) => sum + (log.workout_duration || 0), 0);
+                                                                                
+                                                                                return (
+                                                                                    <div key={exerciseName} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                                                                        <div className="flex items-center justify-between mb-3">
+                                                                                            <h5 className="font-semibold text-gray-900">{exerciseName}</h5>
+                                                                                            <div className="flex items-center space-x-3">
+                                                                                                <span className="text-sm text-gray-600">{setCount} set{setCount !== 1 ? 's' : ''}</span>
+                                                                                                <button
+                                                                                                    onClick={() => openSetsModal(exerciseLogs, exerciseName)}
+                                                                                                    className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
+                                                                                                >
+                                                                                                    View Sets
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        
+                                                                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                                                                            {avgWeight > 0 && (
+                                                                                                <div>
+                                                                                                    <span className="text-gray-500">Avg Weight:</span>
+                                                                                                    <div className="font-medium">{avgWeight.toFixed(1)} kg</div>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {avgReps > 0 && (
+                                                                                                <div>
+                                                                                                    <span className="text-gray-500">Avg Reps:</span>
+                                                                                                    <div className="font-medium">{avgReps.toFixed(0)}</div>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {avgTime > 0 && (
+                                                                                                <div>
+                                                                                                    <span className="text-gray-500">Avg Time:</span>
+                                                                                                    <div className="font-medium">{avgTime.toFixed(0)}s</div>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {avgRPE > 0 && (
+                                                                                                <div>
+                                                                                                    <span className="text-gray-500">Avg RPE:</span>
+                                                                                                    <div className="font-medium">{avgRPE.toFixed(1)}</div>
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        
+                                                                                        {totalDuration > 0 && (
+                                                                                            <div className="mt-3 pt-3 border-t border-gray-200">
+                                                                                                <span className="text-sm text-gray-500">Total Duration: </span>
+                                                                                                <span className="text-sm font-medium">{totalDuration} min</span>
+                                                                                            </div>
+                                                                                        )}
+                                                                                        
+                                                                                        <div className="mt-3 pt-3 border-t border-gray-200">
+                                                                                            <span className="text-sm text-gray-500">Completed: </span>
+                                                                                            <span className="text-sm font-medium">
+                                                                                                {new Date(exerciseLogs[0].completed_at).toLocaleTimeString()}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            });
+                                        })()}
                                     </div>
                                 ) : (
                                     <div className="text-center py-12">
                                         <div className="text-gray-400 mb-4">
                                             <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                             </svg>
                                         </div>
                                         <h3 className="text-lg font-medium text-gray-900 mb-2">No Progress Logs</h3>
@@ -448,6 +551,97 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                     </div>
                 </div>
             </div>
+
+            {/* Sets Modal */}
+            {isSetsModalOpen && (
+                <div className="fixed inset-0 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                        <div className="mt-3">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    {selectedExerciseName} - Individual Sets
+                                </h3>
+                                <button
+                                    onClick={closeSetsModal}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                                >
+                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Set #
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Time
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Weight
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Reps
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Time (s)
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                RPE
+                                            </th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Duration
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {selectedSets
+                                            .sort((a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime())
+                                            .map((set, index) => (
+                                            <tr key={set.id} className="hover:bg-gray-50">
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    {index + 1}
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {new Date(set.completed_at).toLocaleTimeString()}
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {set.weight ? `${set.weight} kg` : '-'}
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {set.reps || '-'}
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {set.time_seconds || '-'}
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {set.rpe || '-'}
+                                                </td>
+                                                <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    {set.workout_duration ? `${set.workout_duration} min` : '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <div className="mt-6 flex justify-end">
+                                <button
+                                    onClick={closeSetsModal}
+                                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors duration-200"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 } 
