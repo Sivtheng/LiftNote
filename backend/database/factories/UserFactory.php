@@ -24,11 +24,14 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
+            'name' => 'Test User ' . rand(1, 1000),
+            'email' => 'user' . rand(1, 1000) . '@example.com',
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'role' => 'client', // Default role
+            'phone_number' => '555-' . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT) . '-' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT),
+            'bio' => 'Test user bio',
         ];
     }
 
@@ -39,6 +42,26 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is a coach.
+     */
+    public function coach(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'coach',
+        ]);
+    }
+
+    /**
+     * Indicate that the user is a client.
+     */
+    public function client(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'client',
         ]);
     }
 }

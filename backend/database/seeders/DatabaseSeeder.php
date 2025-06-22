@@ -83,5 +83,10 @@ class DatabaseSeeder extends Seeder
         //     CommentSeeder::class,
         //     ProgressLogSeeder::class,
         // ]);
+
+        // Add performance test seeder
+        $this->call([
+            \Database\Seeders\PerformanceTestSeeder::class,
+        ]);
     }
 }
