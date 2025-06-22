@@ -15,9 +15,10 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
     const [client, setClient] = useState<Client | null>(null);
     const [programs, setPrograms] = useState<Program[]>([]);
     const [questionnaire, setQuestionnaire] = useState<Questionnaire | null>(null);
+    const [progressLogs, setProgressLogs] = useState<ProgressLog[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string>('');
-    const [activeTab, setActiveTab] = useState<'programs' | 'questionnaire'>('programs');
+    const [activeTab, setActiveTab] = useState<'programs' | 'questionnaire' | 'progress-logs'>('programs');
 
     const { id } = use(params);
 
@@ -68,7 +69,40 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                 }
 
                 const programsData = await programsResponse.json();
-                setPrograms(programsData.programs.filter((p: Program) => p.client_id === clientId));
+                const clientPrograms = programsData.programs.filter((p: Program) => p.client_id === clientId);
+                setPrograms(clientPrograms);
+
+                // Fetch progress logs for all client's programs
+                const allProgressLogs: ProgressLog[] = [];
+                console.log('Fetching progress logs for programs:', clientPrograms.map(p => ({ id: p.id, title: p.title })));
+                
+                for (const program of clientPrograms) {
+                    try {
+                        console.log(`Fetching progress logs for program ${program.id} (${program.title})`);
+                        const progressResponse = await fetch(`${API_CONFIG.BASE_URL}/programs/${program.id}/progress/coach`, {
+                            headers: getAuthHeaders(token)
+                        });
+                        
+                        console.log(`Progress response status for program ${program.id}:`, progressResponse.status);
+                        
+                        if (progressResponse.ok) {
+                            const progressData = await progressResponse.json();
+                            console.log(`Progress data for program ${program.id}:`, progressData);
+                            allProgressLogs.push(...progressData.logs);
+                        } else {
+                            const errorText = await progressResponse.text();
+                            console.error(`Failed to fetch progress logs for program ${program.id}:`, progressResponse.status, errorText);
+                        }
+                    } catch (error) {
+                        console.error(`Error fetching progress logs for program ${program.id}:`, error);
+                    }
+                }
+                
+                console.log('All progress logs collected:', allProgressLogs);
+                
+                // Sort progress logs by completed_at date (newest first)
+                allProgressLogs.sort((a, b) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime());
+                setProgressLogs(allProgressLogs);
             } catch (error) {
                 console.error('Error fetching client data:', error);
                 setError(error instanceof Error ? error.message : 'Failed to fetch client data');
@@ -164,6 +198,16 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                             >
                                 Questionnaire
                             </button>
+                            <button
+                                onClick={() => setActiveTab('progress-logs')}
+                                className={`${
+                                    activeTab === 'progress-logs'
+                                        ? 'border-indigo-500 text-indigo-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200`}
+                            >
+                                Progress Logs
+                            </button>
                         </nav>
                     </div>
 
@@ -254,6 +298,108 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                                         </div>
                                         <h3 className="text-lg font-medium text-gray-900 mb-2">No Questionnaire Responses</h3>
                                         <p className="text-gray-500">This client hasn't completed the questionnaire yet.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'progress-logs' && (
+                            <div>
+                                {progressLogs.length > 0 ? (
+                                    <div className="space-y-6">
+                                        {progressLogs.map((log) => (
+                                            <div key={log.id} className="bg-white border border-gray-200 rounded-lg p-6">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <h3 className="text-lg font-medium text-gray-900">
+                                                            {log.is_rest_day ? 'Rest Day' : log.exercise?.name || 'Workout'}
+                                                        </h3>
+                                                        <p className="mt-1 text-sm text-gray-600">
+                                                            {new Date(log.completed_at).toLocaleDateString()} at {new Date(log.completed_at).toLocaleTimeString()}
+                                                        </p>
+                                                        {log.week && log.day && (
+                                                            <p className="mt-1 text-sm text-gray-500">
+                                                                {log.week.name} - {log.day.name}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                        log.is_rest_day ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                                                    }`}>
+                                                        {log.is_rest_day ? 'Rest Day' : 'Completed'}
+                                                    </span>
+                                                </div>
+
+                                                {!log.is_rest_day && log.exercise && (
+                                                    <div className="mt-4 space-y-3">
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            {log.weight && (
+                                                                <div className="bg-gray-50 rounded-lg p-3">
+                                                                    <h4 className="text-xs font-medium text-gray-500">Weight</h4>
+                                                                    <p className="mt-1 text-lg font-semibold text-gray-900">{log.weight} kg</p>
+                                                                </div>
+                                                            )}
+                                                            {log.reps && (
+                                                                <div className="bg-gray-50 rounded-lg p-3">
+                                                                    <h4 className="text-xs font-medium text-gray-500">Reps</h4>
+                                                                    <p className="mt-1 text-lg font-semibold text-gray-900">{log.reps}</p>
+                                                                </div>
+                                                            )}
+                                                            {log.time_seconds && (
+                                                                <div className="bg-gray-50 rounded-lg p-3">
+                                                                    <h4 className="text-xs font-medium text-gray-500">Time</h4>
+                                                                    <p className="mt-1 text-lg font-semibold text-gray-900">{log.time_seconds}s</p>
+                                                                </div>
+                                                            )}
+                                                            {log.rpe && (
+                                                                <div className="bg-gray-50 rounded-lg p-3">
+                                                                    <h4 className="text-xs font-medium text-gray-500">RPE</h4>
+                                                                    <p className="mt-1 text-lg font-semibold text-gray-900">{log.rpe}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        
+                                                        {log.workout_duration && (
+                                                            <div className="bg-gray-50 rounded-lg p-3">
+                                                                <h4 className="text-xs font-medium text-gray-500">Workout Duration</h4>
+                                                                <p className="mt-1 text-lg font-semibold text-gray-900">{log.workout_duration} minutes</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {log.is_rest_day && (
+                                                    <div className="mt-4 bg-blue-50 rounded-lg p-4">
+                                                        <div className="flex items-center">
+                                                            <svg className="h-5 w-5 text-blue-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <p className="text-blue-800 font-medium">Rest day completed</p>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Comments count */}
+                                                {log.comments && log.comments.length > 0 && (
+                                                    <div className="mt-4 flex items-center text-sm text-gray-500">
+                                                        <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                                        </svg>
+                                                        {log.comments.length} comment{log.comments.length !== 1 ? 's' : ''}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <div className="text-gray-400 mb-4">
+                                            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-lg font-medium text-gray-900 mb-2">No Progress Logs</h3>
+                                        <p className="text-gray-500">This client doesn't have any progress logs yet.</p>
                                     </div>
                                 )}
                             </div>

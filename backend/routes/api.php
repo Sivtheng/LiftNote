@@ -77,6 +77,13 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [ProgressLogController::class, 'getProgramLogs']);
         });
 
+        // Coach Progress Log Routes
+        Route::prefix('/{program}/progress/coach')->group(function () {
+            Route::middleware('role:coach,admin')->group(function () {
+                Route::get('/', [ProgressLogController::class, 'getProgramLogsForCoach']);
+            });
+        });
+
         // Comment Routes for Programs
         Route::prefix('/{program}/comments')->group(function () {
             // Get comments

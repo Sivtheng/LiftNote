@@ -67,6 +67,25 @@ class ProgressLogController extends Controller
         ]);
     }
 
+    public function getProgramLogsForCoach(Program $program)
+    {
+        // Check if the authenticated user is the coach of this program
+        if ($program->coach_id !== Auth::id() && !Auth::user()->isAdmin()) {
+            return response()->json([
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        $logs = ProgressLog::with(['exercise', 'week', 'day', 'user'])
+            ->where('program_id', $program->id)
+            ->orderBy('completed_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'logs' => $logs
+        ]);
+    }
+
     public function getDayLogs(Program $program, $dayId)
     {
         $logs = ProgressLog::with(['exercise'])

@@ -64,11 +64,27 @@ export interface Exercise {
 
 export interface ProgressLog {
     id: number;
-    title: string;
-    description: string;
-    date: string;
-    client_id?: number;
-    program_id?: number;
+    program_id: number;
+    user_id: number;
+    exercise_id?: number;
+    week_id: number;
+    day_id: number;
+    weight?: number;
+    reps?: number;
+    time_seconds?: number;
+    rpe?: number;
+    completed_at: string;
+    workout_duration?: number;
+    is_rest_day: boolean;
+    exercise?: Exercise;
+    week?: ProgramWeek;
+    day?: ProgramDay;
+    user?: {
+        id: number;
+        name: string;
+        email: string;
+        role: 'admin' | 'coach' | 'client';
+    };
     comments: Comment[];
 }
 
