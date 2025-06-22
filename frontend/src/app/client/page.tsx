@@ -23,21 +23,51 @@ function AddClientModal({ isOpen, onClose, onAdd }: AddClientModalProps) {
     });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
+    const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         setError('');
+        setFieldErrors({});
 
         try {
             await onAdd(formData);
             setFormData({ name: '', email: '', password: '' });
             onClose();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to add client');
+            const errorMessage = err instanceof Error ? err.message : 'Failed to add client';
+            setError(errorMessage);
+            
+            // Parse field-specific errors if available
+            if (errorMessage.includes('Validation failed:')) {
+                const lines = errorMessage.split('\n').slice(1); // Skip "Validation failed:" line
+                const errors: {[key: string]: string} = {};
+                
+                lines.forEach(line => {
+                    const [field, message] = line.split(': ');
+                    if (field && message) {
+                        const fieldKey = field.toLowerCase();
+                        errors[fieldKey] = message;
+                    }
+                });
+                
+                setFieldErrors(errors);
+            }
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const getFieldError = (fieldName: string) => {
+        return fieldErrors[fieldName] || '';
+    };
+
+    const getInputClassName = (fieldName: string) => {
+        const baseClass = "w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-black";
+        return getFieldError(fieldName) 
+            ? `${baseClass} border-red-300 focus:border-red-500 focus:ring-red-500`
+            : `${baseClass} border-gray-300`;
     };
 
     if (!isOpen) return null;
@@ -58,7 +88,8 @@ function AddClientModal({ isOpen, onClose, onAdd }: AddClientModalProps) {
                 </div>
                 {error && (
                     <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
-                        {error}
+                        <div className="font-medium mb-1">Error:</div>
+                        <div className="whitespace-pre-line text-sm">{error}</div>
                     </div>
                 )}
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -71,9 +102,12 @@ function AddClientModal({ isOpen, onClose, onAdd }: AddClientModalProps) {
                             id="name"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-black"
+                            className={getInputClassName('name')}
                             required
                         />
+                        {getFieldError('name') && (
+                            <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
+                        )}
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="email">
@@ -84,9 +118,12 @@ function AddClientModal({ isOpen, onClose, onAdd }: AddClientModalProps) {
                             id="email"
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-black"
+                            className={getInputClassName('email')}
                             required
                         />
+                        {getFieldError('email') && (
+                            <p className="mt-1 text-sm text-red-600">{getFieldError('email')}</p>
+                        )}
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="password">
@@ -97,9 +134,12 @@ function AddClientModal({ isOpen, onClose, onAdd }: AddClientModalProps) {
                             id="password"
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-black"
+                            className={getInputClassName('password')}
                             required
                         />
+                        {getFieldError('password') && (
+                            <p className="mt-1 text-sm text-red-600">{getFieldError('password')}</p>
+                        )}
                     </div>
                     <div className="flex justify-end gap-3 pt-4">
                         <button
@@ -200,6 +240,19 @@ export default function ClientListPage() {
 
             if (!response.ok) {
                 const data = await response.json();
+                
+                // Check if it's a validation error with detailed messages
+                if (response.status === 422 && data.errors) {
+                    // Parse validation errors and create a detailed message
+                    const errorMessages = Object.entries(data.errors).map(([field, messages]) => {
+                        const fieldName = field.charAt(0).toUpperCase() + field.slice(1);
+                        const messageList = Array.isArray(messages) ? messages.join(', ') : messages;
+                        return `${fieldName}: ${messageList}`;
+                    }).join('\n');
+                    
+                    throw new Error(`Validation failed:\n${errorMessages}`);
+                }
+                
                 throw new Error(data.message || `HTTP error! status: ${response.status}`);
             }
 
