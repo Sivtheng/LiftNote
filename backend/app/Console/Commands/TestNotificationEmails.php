@@ -70,34 +70,12 @@ class TestNotificationEmails extends Command
         
         $this->newLine();
         
-        // Test program update notification
-        $this->info('3. Testing program update notification...');
-        $programResult = MailService::sendProgramUpdateNotification(
-            $email,
-            'John Client',
-            'Coach Sarah',
-            'Strength Training Program',
-            [
-                'title' => 'Updated Strength Training Program',
-                'status' => 'active',
-                'description' => 'Modified program with new exercises'
-            ]
-        );
-        
-        if ($programResult) {
-            $this->info('✅ Program update notification test successful!');
-        } else {
-            $this->error('❌ Program update notification test failed!');
-        }
-        
-        $this->newLine();
-        
         if (env('MAIL_HOST') === 'smtp.mailtrap.io') {
             $this->warn('📧 These are Mailtrap test emails. Check your Mailtrap inbox to view the emails.');
             $this->info('Mailtrap URL: https://mailtrap.io/inboxes');
         }
         
-        $this->info('🎉 Notification email testing completed!');
+        $this->info('🎉 Comment notification email testing completed!');
         
         return 0;
     }

@@ -88,49 +88,6 @@ class MailService
             return false;
         }
     }
-
-    /**
-     * Send program update notification email to client
-     *
-     * @param string $clientEmail
-     * @param string $clientName
-     * @param string $coachName
-     * @param string $programTitle
-     * @param array $changes
-     * @return bool
-     */
-    public static function sendProgramUpdateNotification($clientEmail, $clientName, $coachName, $programTitle, $changes)
-    {
-        try {
-            $frontendUrl = env('FRONTEND_URL', 'https://liftnote.xyz');
-            $appName = env('APP_NAME', 'LiftNote');
-            
-            Mail::send('emails.program-update-notification', [
-                'clientName' => $clientName,
-                'coachName' => $coachName,
-                'programTitle' => $programTitle,
-                'changes' => $changes,
-                'frontendUrl' => $frontendUrl
-            ], function($message) use ($clientEmail, $appName) {
-                $message->to($clientEmail);
-                $message->subject("Program Updated - {$appName}");
-            });
-            
-            Log::info('Program update notification email sent successfully', [
-                'email' => $clientEmail,
-                'programTitle' => $programTitle,
-                'changes' => $changes
-            ]);
-            return true;
-            
-        } catch (\Exception $e) {
-            Log::error('Failed to send program update notification email', [
-                'email' => $clientEmail,
-                'error' => $e->getMessage()
-            ]);
-            return false;
-        }
-    }
     
     /**
      * Test mail configuration

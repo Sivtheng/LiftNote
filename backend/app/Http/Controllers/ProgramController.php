@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Auth;
 use App\Traits\HandlesResponses;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\ProgramWeek;
-use App\Services\MailService;
 
 class ProgramController extends Controller
 {
@@ -126,17 +125,7 @@ class ProgramController extends Controller
                     'status' => 'required|in:active,completed,cancelled'
                 ]);
 
-                // Store original values for comparison
-                $originalValues = [
-                    'title' => $program->title,
-                    'description' => $program->description,
-                    'status' => $program->status
-                ];
-
                 $program->update($validated);
-
-                // Send email notification for program updates
-                $this->sendProgramUpdateNotification($program, $originalValues, $validated);
 
                 return response()->json([
                     'message' => 'Program updated successfully',
@@ -159,17 +148,7 @@ class ProgramController extends Controller
                 'status' => 'required|in:active,completed,cancelled'
             ]);
 
-            // Store original values for comparison
-            $originalValues = [
-                'title' => $program->title,
-                'description' => $program->description,
-                'status' => $program->status
-            ];
-
             $program->update($validated);
-
-            // Send email notification for program updates
-            $this->sendProgramUpdateNotification($program, $originalValues, $validated);
 
             return $this->respondTo([
                 'message' => 'Program updated successfully',
@@ -476,79 +455,6 @@ class ProgramController extends Controller
                 'message' => 'Error marking week as complete',
                 'error' => $e->getMessage()
             ], 500);
-        }
-    }
-
-    /**
-     * Send email notification for program updates
-     *
-     * @param Program $program
-     * @param array $originalValues
-     * @param array $newValues
-     * @return void
-     */
-    private function sendProgramUpdateNotification($program, $originalValues, $newValues)
-    {
-        try {
-            $user = Auth::user();
-            
-            // Only send notification if coach is updating client's program
-            if (!$user->isCoach() && !$user->isAdmin()) {
-                return;
-            }
-            
-            // Get client information
-            $client = $program->client;
-            if (!$client) {
-                \Log::warning('Client not found for program', ['program_id' => $program->id]);
-                return;
-            }
-            
-            // Don't send notification if coach is updating their own program
-            if ($client->id === $user->id) {
-                return;
-            }
-            
-            // Determine what changed
-            $changes = [];
-            foreach ($newValues as $field => $newValue) {
-                if (isset($originalValues[$field]) && $originalValues[$field] !== $newValue) {
-                    $changes[$field] = $newValue;
-                }
-            }
-            
-            // Only send notification if there are actual changes
-            if (empty($changes)) {
-                return;
-            }
-            
-            // Send email notification
-            $emailSent = MailService::sendProgramUpdateNotification(
-                $client->email,
-                $client->name,
-                $user->name,
-                $program->title,
-                $changes
-            );
-            
-            if ($emailSent) {
-                \Log::info('Program update notification email sent', [
-                    'program_id' => $program->id,
-                    'client_email' => $client->email,
-                    'changes' => $changes
-                ]);
-            } else {
-                \Log::error('Failed to send program update notification email', [
-                    'program_id' => $program->id,
-                    'client_email' => $client->email
-                ]);
-            }
-            
-        } catch (\Exception $e) {
-            \Log::error('Error sending program update notification', [
-                'program_id' => $program->id,
-                'error' => $e->getMessage()
-            ]);
         }
     }
 }

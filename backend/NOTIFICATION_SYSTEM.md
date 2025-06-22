@@ -7,7 +7,6 @@ This document describes the email notification system implemented in LiftNote fo
 The notification system automatically sends emails to clients when coaches perform certain actions:
 
 1. **Comment Notifications**: When a coach adds a new comment or reply to a client's program
-2. **Program Update Notifications**: When a coach modifies a client's program
 
 ## Features
 
@@ -18,13 +17,6 @@ The notification system automatically sends emails to clients when coaches perfo
 - **Content**: Includes coach name, program title, and comment content
 - **Differentiation**: Separate handling for new comments vs replies
 
-### Program Update Notifications
-
-- **Trigger**: Coach updates program details (title, description, status)
-- **Recipient**: Client assigned to the program
-- **Content**: Lists specific changes made to the program
-- **Smart Detection**: Only sends notifications when actual changes occur
-
 ## Implementation Details
 
 ### MailService Class
@@ -34,7 +26,6 @@ Located at `app/Services/MailService.php`
 #### Methods
 
 - `sendCommentNotification()`: Sends comment/reply notifications
-- `sendProgramUpdateNotification()`: Sends program update notifications
 - `sendPasswordResetEmail()`: Existing password reset functionality
 
 ### Email Templates
@@ -44,7 +35,6 @@ Located in `resources/views/emails/`
 #### Templates
 
 - `comment-notification.blade.php`: Comment and reply notifications
-- `program-update-notification.blade.php`: Program update notifications
 - `reset-password.blade.php`: Existing password reset template
 
 ### Controller Integration
@@ -54,12 +44,6 @@ Located in `resources/views/emails/`
 - **File**: `app/Http/Controllers/CommentController.php`
 - **Method**: `store()` - Sends notification when comment is created
 - **Logic**: Only sends if coach/admin is commenting on client's program
-
-#### ProgramController
-
-- **File**: `app/Http/Controllers/ProgramController.php`
-- **Method**: `update()` - Sends notification when program is updated
-- **Logic**: Only sends if coach/admin is updating client's program
 
 ## Configuration
 
@@ -106,11 +90,6 @@ php artisan mail:test-notifications your-email@example.com
    - Add a comment to a client's program
    - Check client's email for notification
 
-2. **Program Update Notifications**:
-   - Login as a coach
-   - Update a client's program details
-   - Check client's email for notification
-
 ## Email Templates
 
 ### Comment Notification Template
@@ -122,22 +101,13 @@ php artisan mail:test-notifications your-email@example.com
   - Comment/reply content
   - Link to view in app
 
-### Program Update Notification Template
-
-- **Subject**: "Program Updated - LiftNote"
-- **Content**:
-  - Personalized greeting
-  - Program information
-  - List of changes made
-  - Link to view updated program
-
 ## Security & Privacy
 
 ### Access Control
 
 - Only coaches and admins can trigger notifications
 - Notifications only sent to program clients
-- No notifications for self-comments/updates
+- No notifications for self-comments
 
 ### Data Protection
 
