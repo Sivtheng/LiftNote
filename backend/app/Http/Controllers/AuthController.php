@@ -110,7 +110,7 @@ class AuthController extends Controller
             if ($user->isClient()) {
                 $user->load(['current_program', 'current_program.weeks', 'current_program.weeks.days', 'current_program.weeks.days.exercises']);
             } elseif ($user->isCoach()) {
-                $user->load(['programs']);
+                $user->load(['coachPrograms']);
             }
 
             return response()->json([
@@ -144,7 +144,7 @@ class AuthController extends Controller
             if ($user->isClient()) {
                 $user->load('progressLogs');
             } elseif ($user->isCoach()) {
-                $user->load('programs');
+                $user->load('coachPrograms');
             }
 
             return response()->json([
