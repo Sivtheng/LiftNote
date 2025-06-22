@@ -15,6 +15,7 @@ export default function DashboardPage() {
     const [clients, setClients] = useState<Client[]>([]);
     const [recentComments, setRecentComments] = useState<Comment[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedPrograms, setSelectedPrograms] = useState<{ [clientId: number]: number }>({});
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -39,6 +40,15 @@ export default function DashboardPage() {
                 const clientsData = await clientsResponse.json();
                 setClients(clientsData.users);
 
+                // Set default selected programs (latest program for each client)
+                const defaultSelections: { [clientId: number]: number } = {};
+                clientsData.users.forEach((client: Client) => {
+                    if (client.client_programs && client.client_programs.length > 0) {
+                        defaultSelections[client.id] = client.client_programs[0].id;
+                    }
+                });
+                setSelectedPrograms(defaultSelections);
+
                 // Fetch recent comments
                 const commentsResponse = await fetch(`${API_CONFIG.BASE_URL}/comments/recent`, {
                     headers: getAuthHeaders(token)
@@ -62,6 +72,26 @@ export default function DashboardPage() {
             fetchDashboardData();
         }
     }, [isAuthenticated]);
+
+    const handleProgramChange = (clientId: number, programId: number) => {
+        setSelectedPrograms((prev: { [clientId: number]: number }) => ({
+            ...prev,
+            [clientId]: programId
+        }));
+    };
+
+    const getSelectedProgram = (client: Client) => {
+        if (!client.client_programs || client.client_programs.length === 0) {
+            return null;
+        }
+        
+        const selectedProgramId = selectedPrograms[client.id];
+        if (selectedProgramId) {
+            return client.client_programs.find(p => p.id === selectedProgramId) || client.client_programs[0];
+        }
+        
+        return client.client_programs[0];
+    };
 
     if (isAuthLoading || isLoading) {
         return (
@@ -167,77 +197,96 @@ export default function DashboardPage() {
                         <div className="bg-white shadow rounded-lg overflow-hidden">
                             {clients.length > 0 ? (
                                 <div className="divide-y divide-gray-200">
-                                    {clients.map((client) => (
-                                        <div key={client.id} className="p-6">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center space-x-4">
-                                                    <div className="flex-shrink-0">
-                                                        {client.profile_picture ? (
-                                                            <img
-                                                                src={client.profile_picture}
-                                                                alt={client.name + "'s profile"}
-                                                                className="h-12 w-12 rounded-full object-cover border border-gray-200"
-                                                            />
-                                                        ) : (
-                                                            <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                                <span className="text-xl font-medium text-indigo-600">
-                                                                    {client.name.charAt(0).toUpperCase()}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="text-lg font-medium text-gray-900">{client.name}</h3>
-                                                        <p className="text-sm text-gray-500">{client.email}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center space-x-4">
-                                                    {client.current_program?.id ? (
-                                                        <>
-                                                            <div className="text-right">
-                                                                <p className="text-sm font-medium text-gray-900">
-                                                                    {client.current_program.title}
-                                                                </p>
-                                                                <p className="text-sm text-gray-500">
-                                                                    Started {new Date(client.current_program.created_at).toLocaleDateString()}
-                                                                </p>
-                                                                <div className="mt-2">
-                                                                    <div className="flex justify-between items-center mb-1">
-                                                                        <span className="text-sm font-medium text-gray-700">Progress</span>
-                                                                        <span className="text-sm font-medium text-gray-700">
-                                                                            {Math.round((client.current_program.completed_weeks / client.current_program.total_weeks) * 100)}%
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="w-full bg-gray-200 rounded-full h-2">
-                                                                        <div 
-                                                                            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                                                                            style={{ width: `${(client.current_program.completed_weeks / client.current_program.total_weeks) * 100}%` }}
-                                                                        ></div>
-                                                                    </div>
-                                                                    <p className="mt-1 text-xs text-gray-500">
-                                                                        {client.current_program.completed_weeks} of {client.current_program.total_weeks} weeks completed
-                                                                    </p>
+                                    {clients.map((client) => {
+                                        const selectedProgram = getSelectedProgram(client);
+                                        return (
+                                            <div key={client.id} className="p-6">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-4">
+                                                        <div className="flex-shrink-0">
+                                                            {client.profile_picture ? (
+                                                                <img
+                                                                    src={client.profile_picture}
+                                                                    alt={client.name + "'s profile"}
+                                                                    className="h-12 w-12 rounded-full object-cover border border-gray-200"
+                                                                />
+                                                            ) : (
+                                                                <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                                    <span className="text-xl font-medium text-indigo-600">
+                                                                        {client.name.charAt(0).toUpperCase()}
+                                                                    </span>
                                                                 </div>
-                                                            </div>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="text-lg font-medium text-gray-900">{client.name}</h3>
+                                                            <p className="text-sm text-gray-500">{client.email}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center space-x-4">
+                                                        {client.client_programs && client.client_programs.length > 0 ? (
+                                                            <>
+                                                                <div className="text-right">
+                                                                    {/* Program Selector */}
+                                                                    {client.client_programs.length > 1 && (
+                                                                        <div className="mb-2">
+                                                                            <select
+                                                                                value={selectedProgram?.id || ''}
+                                                                                onChange={(e) => handleProgramChange(client.id, Number(e.target.value))}
+                                                                                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                                                            >
+                                                                                {client.client_programs.map((program) => (
+                                                                                    <option key={program.id} value={program.id}>
+                                                                                        {program.title}
+                                                                                    </option>
+                                                                                ))}
+                                                                            </select>
+                                                                        </div>
+                                                                    )}
+                                                                    <p className="text-sm font-medium text-gray-900">
+                                                                        {selectedProgram?.title}
+                                                                    </p>
+                                                                    <p className="text-sm text-gray-500">
+                                                                        Started {new Date(selectedProgram?.created_at || '').toLocaleDateString()}
+                                                                    </p>
+                                                                    <div className="mt-2">
+                                                                        <div className="flex justify-between items-center mb-1">
+                                                                            <span className="text-sm font-medium text-gray-700">Progress</span>
+                                                                            <span className="text-sm font-medium text-gray-700">
+                                                                                {Math.round((selectedProgram?.completed_weeks || 0) / (selectedProgram?.total_weeks || 1) * 100)}%
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="w-full bg-gray-200 rounded-full h-2">
+                                                                            <div 
+                                                                                className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                                                                                style={{ width: `${(selectedProgram?.completed_weeks || 0) / (selectedProgram?.total_weeks || 1) * 100}%` }}
+                                                                            ></div>
+                                                                        </div>
+                                                                        <p className="mt-1 text-xs text-gray-500">
+                                                                            {selectedProgram?.completed_weeks || 0} of {selectedProgram?.total_weeks || 0} weeks completed
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    onClick={() => router.push(`/program/${selectedProgram?.id}`)}
+                                                                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                                                >
+                                                                    View Program
+                                                                </button>
+                                                            </>
+                                                        ) : (
                                                             <button
-                                                                onClick={() => router.push(`/program/${client.current_program!.id}`)}
+                                                                onClick={() => router.push(`/program/create?client_id=${client.id}`)}
                                                                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                                                             >
-                                                                View Program
+                                                                Create Program
                                                             </button>
-                                                        </>
-                                                    ) : (
-                                                        <button
-                                                            onClick={() => router.push(`/program/create?client_id=${client.id}`)}
-                                                            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                                        >
-                                                            Create Program
-                                                        </button>
-                                                    )}
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             ) : (
                                 <div className="p-6 text-center text-gray-500">

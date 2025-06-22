@@ -1,3 +1,12 @@
+export interface Program {
+    id: number;
+    title: string;
+    created_at: string;
+    completed_weeks: number;
+    total_weeks: number;
+    status: 'active' | 'completed' | 'cancelled';
+}
+
 export interface Client {
     id: number;
     name: string;
@@ -7,13 +16,7 @@ export interface Client {
     profile_picture?: string;
     created_at?: string;
     updated_at?: string;
-    current_program?: {
-        id: number;
-        title: string;
-        created_at: string;
-        completed_weeks: number;
-        total_weeks: number;
-    };
+    client_programs?: Program[];
 }
 
 export interface Questionnaire {

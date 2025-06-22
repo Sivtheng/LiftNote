@@ -485,9 +485,11 @@ class AuthController extends Controller
                 ], 403);
             }
 
-            // Get all users with role 'client' and load their current program
+            // Get all users with role 'client' and load all their programs
             $users = User::where('role', 'client')
-                ->with(['current_program'])
+                ->with(['clientPrograms' => function($query) {
+                    $query->orderBy('created_at', 'desc'); // Latest programs first
+                }])
                 ->get();
 
             return response()->json([

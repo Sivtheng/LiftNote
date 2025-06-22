@@ -48,7 +48,7 @@ class User extends Authenticatable
         return $this->role === 'client';
     }
 
-    public function programs(): HasMany
+    public function coachPrograms(): HasMany
     {
         return $this->hasMany(Program::class, 'coach_id');
     }
@@ -73,6 +73,11 @@ class User extends Authenticatable
         return $this->hasOne(Program::class, 'client_id')
             ->where('status', 'active')
             ->latest();
+    }
+
+    public function clientPrograms(): HasMany
+    {
+        return $this->hasMany(Program::class, 'client_id');
     }
 
     public function createdExercises()

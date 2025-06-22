@@ -178,7 +178,7 @@ class ProgramController extends Controller
     {
         try {
             $programs = Auth::user()
-                ->programs()
+                ->coachPrograms()
                 ->with(['client' => function($query) {
                     $query->with('questionnaire');
                 }])
@@ -231,6 +231,7 @@ class ProgramController extends Controller
                             ->orderBy('completed_at', 'desc');
                     }
                 ])
+                ->orderBy('created_at', 'desc')
                 ->get();
 
             // Fix any programs that don't have current week/day set
