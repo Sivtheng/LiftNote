@@ -196,37 +196,62 @@ export default function DashboardPage() {
                         <h2 className="text-2xl font-semibold text-gray-900 mb-4">Client Progress</h2>
                         <div className="bg-white shadow rounded-lg overflow-hidden">
                             {clients.length > 0 ? (
-                                <div className="divide-y divide-gray-200">
-                                    {clients.map((client) => {
-                                        const selectedProgram = getSelectedProgram(client);
-                                        return (
-                                            <div key={client.id} className="p-6">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center space-x-4">
-                                                        <div className="flex-shrink-0">
-                                                            {client.profile_picture ? (
-                                                                <img
-                                                                    src={client.profile_picture}
-                                                                    alt={client.name + "'s profile"}
-                                                                    className="h-12 w-12 rounded-full object-cover border border-gray-200"
-                                                                />
-                                                            ) : (
-                                                                <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                                    <span className="text-xl font-medium text-indigo-600">
-                                                                        {client.name.charAt(0).toUpperCase()}
-                                                                    </span>
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Client
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Program
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Progress
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Status
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {clients.map((client) => {
+                                                const selectedProgram = getSelectedProgram(client);
+                                                return (
+                                                    <tr key={client.id} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="flex items-center">
+                                                                <div className="flex-shrink-0 h-10 w-10">
+                                                                    {client.profile_picture ? (
+                                                                        <img
+                                                                            src={client.profile_picture}
+                                                                            alt={client.name + "'s profile"}
+                                                                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                                                        />
+                                                                    ) : (
+                                                                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                                            <span className="text-sm font-medium text-indigo-600">
+                                                                                {client.name.charAt(0).toUpperCase()}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            <h3 className="text-lg font-medium text-gray-900">{client.name}</h3>
-                                                            <p className="text-sm text-gray-500">{client.email}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center space-x-4">
-                                                        {client.client_programs && client.client_programs.length > 0 ? (
-                                                            <>
-                                                                <div className="text-right">
+                                                                <div className="ml-4">
+                                                                    <div className="text-sm font-medium text-gray-900">
+                                                                        {client.name}
+                                                                    </div>
+                                                                    <div className="text-sm text-gray-500">
+                                                                        {client.email}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            {client.client_programs && client.client_programs.length > 0 ? (
+                                                                <div>
                                                                     {/* Program Selector */}
                                                                     {client.client_programs.length > 1 && (
                                                                         <div className="mb-2">
@@ -243,50 +268,80 @@ export default function DashboardPage() {
                                                                             </select>
                                                                         </div>
                                                                     )}
-                                                                    <p className="text-sm font-medium text-gray-900">
-                                                                        {selectedProgram?.title}
-                                                                    </p>
-                                                                    <p className="text-sm text-gray-500">
-                                                                        Started {new Date(selectedProgram?.created_at || '').toLocaleDateString()}
-                                                                    </p>
-                                                                    <div className="mt-2">
-                                                                        <div className="flex justify-between items-center mb-1">
-                                                                            <span className="text-sm font-medium text-gray-700">Progress</span>
-                                                                            <span className="text-sm font-medium text-gray-700">
-                                                                                {Math.round((selectedProgram?.completed_weeks || 0) / (selectedProgram?.total_weeks || 1) * 100)}%
-                                                                            </span>
-                                                                        </div>
-                                                                        <div className="w-full bg-gray-200 rounded-full h-2">
-                                                                            <div 
-                                                                                className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                                                                                style={{ width: `${(selectedProgram?.completed_weeks || 0) / (selectedProgram?.total_weeks || 1) * 100}%` }}
-                                                                            ></div>
-                                                                        </div>
-                                                                        <p className="mt-1 text-xs text-gray-500">
-                                                                            {selectedProgram?.completed_weeks || 0} of {selectedProgram?.total_weeks || 0} weeks completed
-                                                                        </p>
+                                                                    <div className="text-sm font-medium text-gray-900">
+                                                                        {selectedProgram?.title || 'No Program'}
+                                                                    </div>
+                                                                    <div className="text-sm text-gray-500">
+                                                                        Started {selectedProgram ? new Date(selectedProgram.created_at).toLocaleDateString() : 'N/A'}
                                                                     </div>
                                                                 </div>
+                                                            ) : (
+                                                                <div className="text-sm text-gray-500">
+                                                                    No programs assigned
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            {selectedProgram ? (
+                                                                <div>
+                                                                    <div className="flex justify-between items-center mb-1">
+                                                                        <span className="text-sm font-medium text-gray-700">
+                                                                            {Math.round((selectedProgram.completed_weeks || 0) / (selectedProgram.total_weeks || 1) * 100)}%
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                                                        <div 
+                                                                            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                                                                            style={{ width: `${(selectedProgram.completed_weeks || 0) / (selectedProgram.total_weeks || 1) * 100}%` }}
+                                                                        ></div>
+                                                                    </div>
+                                                                    <div className="text-xs text-gray-500 mt-1">
+                                                                        {selectedProgram.completed_weeks || 0} of {selectedProgram.total_weeks || 0} weeks
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-sm text-gray-500">
+                                                                    N/A
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            {selectedProgram ? (
+                                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                                    selectedProgram.status === 'active' ? 'bg-green-100 text-green-800' :
+                                                                    selectedProgram.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                                                    'bg-red-100 text-red-800'
+                                                                }`}>
+                                                                    {selectedProgram.status}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                                    No Program
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                            {selectedProgram ? (
                                                                 <button
-                                                                    onClick={() => router.push(`/program/${selectedProgram?.id}`)}
-                                                                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                                                    onClick={() => router.push(`/program/${selectedProgram.id}`)}
+                                                                    className="text-indigo-600 hover:text-indigo-900"
                                                                 >
                                                                     View Program
                                                                 </button>
-                                                            </>
-                                                        ) : (
-                                                            <button
-                                                                onClick={() => router.push(`/program/create?client_id=${client.id}`)}
-                                                                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                                            >
-                                                                Create Program
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => router.push(`/program/create?client_id=${client.id}`)}
+                                                                    className="text-indigo-600 hover:text-indigo-900"
+                                                                >
+                                                                    Create Program
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
                                 </div>
                             ) : (
                                 <div className="p-6 text-center text-gray-500">
