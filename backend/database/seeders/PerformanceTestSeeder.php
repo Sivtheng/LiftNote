@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Program;
+use App\Models\ProgramWeek;
+use App\Models\ProgramDay;
 use App\Models\ProgressLog;
 use App\Models\Comment;
 use Illuminate\Support\Facades\Hash;
@@ -39,7 +41,7 @@ class PerformanceTestSeeder extends Seeder
             return;
         }
 
-        // Create programs, progress logs, and comments for each client
+        // Create programs, weeks, days, progress logs, and comments for each client
         foreach ($clients as $i => $client) {
             // Create a program for the client
             $program = Program::updateOrCreate(
@@ -58,6 +60,30 @@ class PerformanceTestSeeder extends Seeder
                 ]
             );
 
+            // Create a week for the program
+            $week = ProgramWeek::updateOrCreate(
+                [
+                    'program_id' => $program->id,
+                    'order' => 1
+                ],
+                [
+                    'title' => "Week 1",
+                    'description' => "First week of training",
+                ]
+            );
+
+            // Create a day for the week
+            $day = ProgramDay::updateOrCreate(
+                [
+                    'program_week_id' => $week->id,
+                    'order' => 1
+                ],
+                [
+                    'title' => "Day 1",
+                    'description' => "First day of training",
+                ]
+            );
+
             // Add 3 progress logs
             for ($j = 1; $j <= 3; $j++) {
                 ProgressLog::updateOrCreate(
@@ -68,8 +94,8 @@ class PerformanceTestSeeder extends Seeder
                     ],
                     [
                         'exercise_id' => null,
-                        'week_id' => null,
-                        'day_id' => null,
+                        'week_id' => $week->id,
+                        'day_id' => $day->id,
                         'weight' => rand(50, 200),
                         'reps' => rand(8, 15),
                         'time_seconds' => rand(1800, 3600), // 30-60 minutes
@@ -109,7 +135,7 @@ class PerformanceTestSeeder extends Seeder
         }
 
         $this->command->info('Performance test data created successfully!');
-        $this->command->info('Created 5 clients with programs, progress logs, and comments.');
+        $this->command->info('Created 5 clients with programs, weeks, days, progress logs, and comments.');
         $this->command->info('Client emails: client1@liftnote.com to client5@liftnote.com');
         $this->command->info('Password for all clients: password123');
     }
