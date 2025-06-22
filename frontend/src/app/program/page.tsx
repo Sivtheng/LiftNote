@@ -7,10 +7,18 @@ import { Program, ProgressLog, ProgramWeek, Comment } from '@/types/program';
 import Navbar from '../components/Navbar';
 import { API_CONFIG, getAuthHeaders } from '@/config/api';
 
+interface Client {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+}
+
 export default function ProgramListPage() {
     const router = useRouter();
     const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
     const [programs, setPrograms] = useState<Program[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string>('');
 
@@ -54,7 +62,36 @@ export default function ProgramListPage() {
             }
         };
 
+        const fetchClients = async () => {
+            if (!isAuthenticated) return;
+            
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('No authentication token found');
+                }
+
+                const response = await fetch(`${API_CONFIG.BASE_URL}/users`, {
+                    headers: getAuthHeaders(token)
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || `HTTP error! status: ${response.status}`);
+                }
+
+                if (data.users) {
+                    setClients(data.users);
+                }
+            } catch (error) {
+                console.error('Error fetching clients:', error);
+                // Don't set error for clients fetch failure as it's not critical
+            }
+        };
+
         fetchPrograms();
+        fetchClients();
     }, [isAuthenticated]);
 
     const handleDeleteProgram = async (programId: number) => {
@@ -85,6 +122,67 @@ export default function ProgramListPage() {
         }
     };
 
+    const handleDuplicateProgram = async (programId: number) => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${programId}/duplicate`, {
+                method: 'POST',
+                headers: getAuthHeaders(token)
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Failed to duplicate program');
+            }
+
+            const data = await response.json();
+            
+            // Add the new duplicated program to the list
+            setPrograms((prevPrograms: Program[]) => [data.program, ...prevPrograms]);
+        } catch (error) {
+            console.error('Error duplicating program:', error);
+            setError(error instanceof Error ? error.message : 'Failed to duplicate program');
+        }
+    };
+
+    const handleAssignClient = async (programId: number, clientId: number) => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                throw new Error('No authentication token found');
+            }
+
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${programId}/assign-client`, {
+                method: 'POST',
+                headers: getAuthHeaders(token),
+                body: JSON.stringify({ client_id: clientId })
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Failed to assign client');
+            }
+
+            const data = await response.json();
+            
+            // Update the program in the list
+            setPrograms((prevPrograms: Program[]) => 
+                prevPrograms.map((program: Program) => 
+                    program.id === programId 
+                        ? data.program 
+                        : program
+                )
+            );
+        } catch (error) {
+            console.error('Error assigning client:', error);
+            setError(error instanceof Error ? error.message : 'Failed to assign client');
+        }
+    };
+
     const handleStatusChange = async (programId: number, newStatus: 'active' | 'completed' | 'cancelled') => {
         try {
             const token = localStorage.getItem('token');
@@ -97,8 +195,8 @@ export default function ProgramListPage() {
                 headers: getAuthHeaders(token),
                 body: JSON.stringify({
                     status: newStatus,
-                    title: programs.find(p => p.id === programId)?.title || '',
-                    description: programs.find(p => p.id === programId)?.description || ''
+                    title: programs.find((p: Program) => p.id === programId)?.title || '',
+                    description: programs.find((p: Program) => p.id === programId)?.description || ''
                 })
             });
 
@@ -108,7 +206,7 @@ export default function ProgramListPage() {
             }
 
             // Update the program status in the local state
-            setPrograms(programs.map(program => 
+            setPrograms(programs.map((program: Program) => 
                 program.id === programId 
                     ? { ...program, status: newStatus }
                     : program
@@ -223,9 +321,43 @@ export default function ProgramListPage() {
                                     </div>
                                 </div>
                                 <p className="mt-2 text-sm text-gray-500">
-                                    Client: {program.client?.name || 'N/A'}
+                                    Client: {program.client?.name || 'No client assigned'}
                                 </p>
-                                <div className="mt-4 flex justify-end">
+                                
+                                {/* Client Assignment Dropdown for unassigned programs */}
+                                {!program.client_id && (
+                                    <div className="mt-3">
+                                        <select
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                if (e.target.value) {
+                                                    handleAssignClient(program.id, parseInt(e.target.value));
+                                                }
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="w-full text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>Assign to client...</option>
+                                            {clients.map((client) => (
+                                                <option key={client.id} value={client.id}>
+                                                    {client.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                
+                                <div className="mt-4 flex justify-between items-center">
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDuplicateProgram(program.id);
+                                        }}
+                                        className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                                    >
+                                        Duplicate
+                                    </button>
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();

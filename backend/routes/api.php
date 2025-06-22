@@ -57,6 +57,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/{program}', [ProgramController::class, 'update']);
             Route::delete('/{program}', [ProgramController::class, 'destroy']);
             Route::post('/{program}/weeks/{week}/complete', [ProgramController::class, 'markWeekComplete']);
+            Route::post('/{program}/duplicate', [ProgramController::class, 'duplicate']);
+            Route::post('/{program}/assign-client', [ProgramController::class, 'assignClient']);
         });
 
         // Client Routes

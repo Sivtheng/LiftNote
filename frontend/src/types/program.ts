@@ -4,7 +4,7 @@ export interface Program {
     description: string;
     status: 'active' | 'completed' | 'cancelled';
     coach_id: number;
-    client_id: number;
+    client_id: number | null;
     coach?: {
         name: string;
         email?: string;

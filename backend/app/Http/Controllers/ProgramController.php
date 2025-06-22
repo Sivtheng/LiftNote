@@ -457,4 +457,118 @@ class ProgramController extends Controller
             ], 500);
         }
     }
+
+    // Duplicate a program (Coach/Admin only)
+    public function duplicate(Program $program)
+    {
+        try {
+            // Check authorization
+            if (!Auth::user()->isAdmin() && $program->coach_id !== Auth::id()) {
+                return response()->json([
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            // Create a new program with the same data but no client assigned
+            $duplicatedProgram = Program::create([
+                'title' => $program->title . ' (Copy)',
+                'description' => $program->description,
+                'coach_id' => Auth::id(),
+                'client_id' => null, // No client assigned initially
+                'status' => 'active',
+                'total_weeks' => $program->total_weeks,
+                'completed_weeks' => 0
+            ]);
+
+            // Duplicate weeks
+            foreach ($program->weeks()->orderBy('order')->get() as $week) {
+                $duplicatedWeek = $duplicatedProgram->weeks()->create([
+                    'name' => $week->name,
+                    'order' => $week->order
+                ]);
+
+                // Duplicate days
+                foreach ($week->days()->orderBy('order')->get() as $day) {
+                    $duplicatedDay = $duplicatedWeek->days()->create([
+                        'name' => $day->name,
+                        'order' => $day->order
+                    ]);
+
+                    // Duplicate exercises with their pivot data
+                    foreach ($day->exercises as $exercise) {
+                        $duplicatedDay->exercises()->attach($exercise->id, [
+                            'sets' => $exercise->pivot->sets,
+                            'reps' => $exercise->pivot->reps,
+                            'time_seconds' => $exercise->pivot->time_seconds,
+                            'measurement_type' => $exercise->pivot->measurement_type,
+                            'measurement_value' => $exercise->pivot->measurement_value
+                        ]);
+                    }
+                }
+            }
+
+            // Set the first week and day as current
+            $firstWeek = $duplicatedProgram->weeks()->orderBy('order')->first();
+            if ($firstWeek) {
+                $firstDay = $firstWeek->days()->orderBy('order')->first();
+                if ($firstDay) {
+                    $duplicatedProgram->update([
+                        'current_week_id' => $firstWeek->id,
+                        'current_day_id' => $firstDay->id
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'message' => 'Program duplicated successfully',
+                'program' => $duplicatedProgram->load(['coach', 'client', 'weeks.days.exercises'])
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error duplicating program',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Assign client to a program (Coach/Admin only)
+    public function assignClient(Request $request, Program $program)
+    {
+        try {
+            // Check authorization
+            if (!Auth::user()->isAdmin() && $program->coach_id !== Auth::id()) {
+                return response()->json([
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            // Validate request
+            $validated = $request->validate([
+                'client_id' => 'required|exists:users,id'
+            ]);
+
+            // Check if the user is a client
+            $client = User::find($validated['client_id']);
+            if (!$client || !$client->isClient()) {
+                return response()->json([
+                    'message' => 'Invalid client ID'
+                ], 422);
+            }
+
+            // Update the program with the client
+            $program->update([
+                'client_id' => $validated['client_id']
+            ]);
+
+            return response()->json([
+                'message' => 'Client assigned successfully',
+                'program' => $program->fresh(['coach', 'client'])
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error assigning client',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
