@@ -67,20 +67,18 @@ class PerformanceTestSeeder extends Seeder
                     'order' => 1
                 ],
                 [
-                    'title' => "Week 1",
-                    'description' => "First week of training",
+                    'name' => "Week 1",
                 ]
             );
 
             // Create a day for the week
             $day = ProgramDay::updateOrCreate(
                 [
-                    'program_week_id' => $week->id,
+                    'week_id' => $week->id,
                     'order' => 1
                 ],
                 [
-                    'title' => "Day 1",
-                    'description' => "First day of training",
+                    'name' => "Day 1",
                 ]
             );
 
