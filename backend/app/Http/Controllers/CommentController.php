@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\Rule;
 use App\Services\SpacesService;
+use App\Services\MailService;
 use Illuminate\Support\Str;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
@@ -170,6 +171,9 @@ class CommentController extends Controller
 
             // Load the comment with user and replies relationships
             $comment->load('user');
+            
+            // Send email notification if coach is commenting on client's program
+            $this->sendCommentNotification($comment, $program);
             
             // If this is a reply, load the parent comment's replies to maintain structure
             if ($comment->parent_id) {
@@ -500,5 +504,68 @@ class CommentController extends Controller
         return response()->json([
             'comments' => $comments
         ]);
+    }
+
+    /**
+     * Send email notification for new comments/replies
+     *
+     * @param Comment $comment
+     * @param Program $program
+     * @return void
+     */
+    private function sendCommentNotification($comment, $program)
+    {
+        try {
+            $user = Auth::user();
+            
+            // Only send notification if coach is commenting on client's program
+            if (!$user->isCoach() && !$user->isAdmin()) {
+                return;
+            }
+            
+            // Get client information
+            $client = $program->client;
+            if (!$client) {
+                \Log::warning('Client not found for program', ['program_id' => $program->id]);
+                return;
+            }
+            
+            // Don't send notification if coach is commenting on their own program
+            if ($client->id === $user->id) {
+                return;
+            }
+            
+            $isReply = !empty($comment->parent_id);
+            $commentContent = $comment->content ?: 'Media content';
+            
+            // Send email notification
+            $emailSent = MailService::sendCommentNotification(
+                $client->email,
+                $client->name,
+                $user->name,
+                $program->title,
+                $commentContent,
+                $isReply
+            );
+            
+            if ($emailSent) {
+                \Log::info('Comment notification email sent', [
+                    'comment_id' => $comment->id,
+                    'client_email' => $client->email,
+                    'is_reply' => $isReply
+                ]);
+            } else {
+                \Log::error('Failed to send comment notification email', [
+                    'comment_id' => $comment->id,
+                    'client_email' => $client->email
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            \Log::error('Error sending comment notification', [
+                'comment_id' => $comment->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }
