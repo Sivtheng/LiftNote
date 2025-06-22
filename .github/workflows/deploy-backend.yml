@@ -10,6 +10,7 @@ on:
       - 'docker-compose.prod.yml'
       - 'nginx/**'
       - 'nginx/liftnote.conf'
+      - 'scripts/deploy.sh'
   pull_request:
     branches: [ main ]
     paths:

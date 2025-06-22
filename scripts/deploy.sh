@@ -38,7 +38,8 @@ fi
 
 # Pull latest changes
 print_status "Pulling latest changes from Git..."
-git pull origin main
+git fetch origin
+git reset --hard origin/main
 
 # Stop existing containers
 print_status "Stopping existing containers..."
