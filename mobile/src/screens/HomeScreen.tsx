@@ -63,7 +63,13 @@ export default function HomeScreen() {
 
     useFocusEffect(
         React.useCallback(() => {
-            fetchData();
+            // Use refreshProgramData to maintain current program selection
+            if (allPrograms.length > 0) {
+                refreshProgramData();
+            } else {
+                // Only use fetchData for initial load when no programs exist
+                fetchData();
+            }
         }, [])
     );
 

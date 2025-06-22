@@ -137,18 +137,18 @@ export default function HistoryScreen({ navigation }: any) {
                                         {log.is_rest_day ? 'Rest Day' : log.exercise?.name || 'Unknown Exercise'}
                                     </Text>
                                     <View style={styles.exerciseDetails}>
-                                        {!log.is_rest_day && log.weight && (
+                                        {!log.is_rest_day && log.weight ? (
                                             <Text style={styles.exerciseDetail}>Weight: {log.weight}kg</Text>
-                                        )}
-                                        {!log.is_rest_day && log.reps && (
+                                        ) : null}
+                                        {!log.is_rest_day && log.reps ? (
                                             <Text style={styles.exerciseDetail}>Reps: {log.reps}</Text>
-                                        )}
-                                        {!log.is_rest_day && log.time_seconds && (
+                                        ) : null}
+                                        {!log.is_rest_day && log.time_seconds ? (
                                             <Text style={styles.exerciseDetail}>Time: {formatDuration(log.time_seconds)}</Text>
-                                        )}
-                                        {!log.is_rest_day && log.rpe && (
+                                        ) : null}
+                                        {!log.is_rest_day && log.rpe ? (
                                             <Text style={styles.exerciseDetail}>RPE: {log.rpe}</Text>
-                                        )}
+                                        ) : null}
                                     </View>
                                 </View>
                             )) || (

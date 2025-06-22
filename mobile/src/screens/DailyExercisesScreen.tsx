@@ -401,7 +401,9 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                         secureTextEntry={false}
                         editable={isWorkoutStarted}
                     />
-                ) : null}
+                ) : (
+                    <View style={styles.inputCell} />
+                )}
                 {isTimeBased ? (
                     <TextInput
                         style={[styles.inputCell, !isWorkoutStarted && styles.disabledInput]}
