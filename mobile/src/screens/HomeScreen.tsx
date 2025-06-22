@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl, Image } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl, Image, Modal, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode } from 'expo-av';
 import { programService, commentService, authService } from '../services/api';
@@ -8,7 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
-    DailyExercises: undefined;
+    DailyExercises: { programId: string };
     Comments: { programId: string; programTitle: string };
 };
 
@@ -36,6 +36,15 @@ interface TransformedComment {
     profilePicture?: string | null;
 }
 
+interface Program {
+    id: number;
+    title: string;
+    current_week?: any;
+    current_day?: any;
+    completed_weeks?: number;
+    total_weeks?: number;
+}
+
 export default function HomeScreen() {
     const [clientName, setClientName] = useState('Loading...');
     const [currentWeek, setCurrentWeek] = useState('Loading...');
@@ -45,15 +54,27 @@ export default function HomeScreen() {
     const [recentComments, setRecentComments] = useState<TransformedComment[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [currentProgram, setCurrentProgram] = useState<any>(null);
+    const [allPrograms, setAllPrograms] = useState<Program[]>([]);
+    const [activeProgramIndex, setActiveProgramIndex] = useState(0);
+    const [currentProgram, setCurrentProgram] = useState<Program | null>(null);
     const navigation = useNavigation<NavigationProp>();
     const [refreshing, setRefreshing] = useState(false);
+    const [dropdownVisible, setDropdownVisible] = useState(false);
 
     useFocusEffect(
         React.useCallback(() => {
             fetchData();
         }, [])
     );
+
+    // Update current program when active program index changes
+    useEffect(() => {
+        if (allPrograms.length > 0 && activeProgramIndex < allPrograms.length) {
+            const program = allPrograms[activeProgramIndex];
+            setCurrentProgram(program);
+            updateProgramDisplay(program);
+        }
+    }, [activeProgramIndex, allPrograms]);
 
     const getCurrentUser = async () => {
         try {
@@ -85,56 +106,31 @@ export default function HomeScreen() {
         return 'Guest';
     };
 
-    const fetchData = async () => {
+    const updateProgramDisplay = async (program: Program) => {
+        // Calculate completion percentage
+        const completion = program.completed_weeks && program.total_weeks
+            ? Math.round((program.completed_weeks / program.total_weeks) * 100)
+            : 0;
+
+        // Get current week and day from the program
+        const currentWeek = program.current_week;
+        const currentDay = program.current_day;
+        
+        // If we have a current day but no current week, something is wrong
+        if (currentDay && !currentWeek) {
+            console.error('Program has current day but no current week:', program);
+            setCurrentWeek('Error: No Week Assigned');
+            setCurrentDay(`Day ${currentDay.order}`);
+        } else {
+            setCurrentWeek(currentWeek ? `Week ${currentWeek.order}` : 'No Week Assigned');
+            setCurrentDay(currentDay ? `Day ${currentDay.order}` : 'No Day Assigned');
+        }
+        
+        setProgramName(program.title || 'No Program Assigned');
+        setCompletionPercentage(completion);
+
+        // Fetch comments for this program
         try {
-            setError(null);
-            
-            // Get current user name first
-            const userName = await getCurrentUser();
-            setClientName(userName);
-            
-            const programData = await programService.getClientPrograms();
-
-            // Handle case when client has no programs
-            if (!programData || !programData.programs || programData.programs.length === 0) {
-                // Set default values for new clients with no programs
-                setCurrentWeek('No Program Assigned');
-                setCurrentDay('No Day Assigned');
-                setProgramName('No Program Assigned');
-                setCompletionPercentage(0);
-                setRecentComments([]);
-                setCurrentProgram(null);
-                setLoading(false);
-                return; // Exit early, don't throw error
-            }
-
-            // Get the first program from the array
-            const program = programData.programs[0];
-            setCurrentProgram(program);
-            
-            // Calculate completion percentage
-            const completion = program.completed_weeks 
-                ? Math.round((program.completed_weeks / program.total_weeks) * 100)
-                : 0;
-
-            // Get current week and day from the program
-            const currentWeek = program.current_week;
-            const currentDay = program.current_day;
-            
-            // If we have a current day but no current week, something is wrong
-            if (currentDay && !currentWeek) {
-                console.error('Program has current day but no current week:', program);
-                setCurrentWeek('Error: No Week Assigned');
-                setCurrentDay(`Day ${currentDay.order}`);
-            } else {
-                setCurrentWeek(currentWeek ? `Week ${currentWeek.order}` : 'No Week Assigned');
-                setCurrentDay(currentDay ? `Day ${currentDay.order}` : 'No Day Assigned');
-            }
-            
-            setProgramName(program.title || 'No Program Assigned');
-            setCompletionPercentage(completion);
-
-            // Fetch comments for this program
             const commentsData = await commentService.getCoachComments(program.id.toString());
 
             // Transform comments data to match our expected format
@@ -155,6 +151,68 @@ export default function HomeScreen() {
             } else {
                 setRecentComments([]);
             }
+        } catch (error) {
+            console.error('Error fetching comments for program:', program.id, error);
+            setRecentComments([]);
+        }
+    };
+
+    const refreshProgramData = async () => {
+        try {
+            const programData = await programService.getClientPrograms();
+            
+            if (programData && programData.programs && programData.programs.length > 0) {
+                setAllPrograms(programData.programs);
+                
+                // Ensure the active program index is still valid
+                if (activeProgramIndex >= programData.programs.length) {
+                    setActiveProgramIndex(0);
+                }
+                
+                // Update the display for the current active program
+                if (allPrograms.length > 0 && activeProgramIndex < allPrograms.length) {
+                    const program = allPrograms[activeProgramIndex];
+                    await updateProgramDisplay(program);
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing program data:', error);
+        }
+    };
+
+    const fetchData = async () => {
+        try {
+            setError(null);
+            
+            // Get current user name first
+            const userName = await getCurrentUser();
+            setClientName(userName);
+            
+            const programData = await programService.getClientPrograms();
+
+            // Handle case when client has no programs
+            if (!programData || !programData.programs || programData.programs.length === 0) {
+                // Set default values for new clients with no programs
+                setCurrentWeek('No Program Assigned');
+                setCurrentDay('No Day Assigned');
+                setProgramName('No Program Assigned');
+                setCompletionPercentage(0);
+                setRecentComments([]);
+                setCurrentProgram(null);
+                setAllPrograms([]);
+                setLoading(false);
+                return; // Exit early, don't throw error
+            }
+
+            // Store all programs
+            setAllPrograms(programData.programs);
+            
+            // Maintain current selection if valid, otherwise set to first program
+            const validIndex = activeProgramIndex < programData.programs.length ? activeProgramIndex : 0;
+            setActiveProgramIndex(validIndex);
+            
+            // The useEffect will handle updating the display for the active program
+
         } catch (error: any) {
             console.error('Error fetching data:', error);
             console.error('Error details:', error.response?.data || error.message);
@@ -169,6 +227,73 @@ export default function HomeScreen() {
         setRefreshing(true);
         await fetchData();
         setRefreshing(false);
+    };
+
+    const renderProgramSelector = () => {
+        if (allPrograms.length <= 1) return null;
+
+        return (
+            <View style={styles.programSelectorContainer}>
+                <Text style={styles.programSelectorTitle}>Select Program</Text>
+                <TouchableOpacity 
+                    style={styles.dropdownButton}
+                    onPress={() => setDropdownVisible(true)}
+                >
+                    <Text style={styles.dropdownButtonText}>
+                        {allPrograms[activeProgramIndex]?.title || 'Select a program'}
+                    </Text>
+                    <Ionicons name="chevron-down" size={20} color="#007AFF" />
+                </TouchableOpacity>
+
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={dropdownVisible}
+                    onRequestClose={() => setDropdownVisible(false)}
+                >
+                    <Pressable 
+                        style={styles.modalOverlay}
+                        onPress={() => setDropdownVisible(false)}
+                    >
+                        <View style={styles.dropdownModal}>
+                            <View style={styles.dropdownHeader}>
+                                <Text style={styles.dropdownTitle}>Select Program</Text>
+                                <TouchableOpacity onPress={() => setDropdownVisible(false)}>
+                                    <Ionicons name="close" size={24} color="#666" />
+                                </TouchableOpacity>
+                            </View>
+                            <ScrollView style={styles.dropdownList}>
+                                {allPrograms.map((program, index) => (
+                                    <TouchableOpacity
+                                        key={program.id}
+                                        style={[
+                                            styles.dropdownItem,
+                                            index === activeProgramIndex && styles.dropdownItemActive
+                                        ]}
+                                        onPress={() => {
+                                            setActiveProgramIndex(index);
+                                            setDropdownVisible(false);
+                                            // Refresh program data without resetting selection
+                                            refreshProgramData();
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.dropdownItemText,
+                                            index === activeProgramIndex && styles.dropdownItemTextActive
+                                        ]}>
+                                            {program.title}
+                                        </Text>
+                                        {index === activeProgramIndex && (
+                                            <Ionicons name="checkmark" size={20} color="#007AFF" />
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+                    </Pressable>
+                </Modal>
+            </View>
+        );
     };
 
     const renderMedia = (mediaUrl: string, mediaType: string) => {
@@ -234,6 +359,8 @@ export default function HomeScreen() {
                     <Text style={styles.greeting}>Hello, {clientName}</Text>
                     <Text style={styles.subtitle}>Ready to get your workout in for the day?</Text>
                 </View>
+
+                {renderProgramSelector()}
 
                 <View style={styles.card}>
                     <View style={styles.cardHeader}>
@@ -302,7 +429,7 @@ export default function HomeScreen() {
                         (currentWeek !== 'No Week Assigned' && currentDay !== 'No Day Assigned') ? (
                             <TouchableOpacity 
                                 style={styles.startButton}
-                                onPress={() => navigation.navigate('DailyExercises')}
+                                onPress={() => navigation.navigate('DailyExercises', { programId: currentProgram.id.toString() })}
                             >
                                 <Text style={styles.startButtonText}>Start Workout</Text>
                             </TouchableOpacity>
@@ -507,5 +634,74 @@ const styles = StyleSheet.create({
         color: '#666',
         fontSize: 16,
         fontWeight: 'bold',
+    },
+    programSelectorContainer: {
+        marginBottom: 20,
+    },
+    programSelectorTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    dropdownButton: {
+        backgroundColor: '#fff',
+        padding: 10,
+        borderWidth: 1,
+        borderColor: '#007AFF',
+        borderRadius: 8,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    dropdownButtonText: {
+        color: '#007AFF',
+        fontWeight: 'bold',
+    },
+    dropdownModal: {
+        backgroundColor: '#fff',
+        margin: 20,
+        borderRadius: 10,
+        maxHeight: '80%',
+        marginTop: '20%',
+    },
+    dropdownHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    dropdownTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    dropdownList: {
+        maxHeight: 300,
+    },
+    dropdownItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+    },
+    dropdownItemActive: {
+        backgroundColor: '#f0f8ff',
+    },
+    dropdownItemText: {
+        color: '#333',
+        fontSize: 16,
+    },
+    dropdownItemTextActive: {
+        color: '#007AFF',
+        fontWeight: 'bold',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
     },
 }); 

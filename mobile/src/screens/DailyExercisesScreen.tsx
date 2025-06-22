@@ -74,6 +74,7 @@ const WORKOUT_START_TIME_KEY = '@workout_start_time';
 const EXERCISE_LOGS_KEY = '@exercise_logs';
 
 export default function DailyExercisesScreen({ navigation, route }: any) {
+    const { programId } = route.params || {};
     const [program, setProgram] = useState<Program | null>(null);
     const [currentWeek, setCurrentWeek] = useState<Week | null>(null);
     const [currentDay, setCurrentDay] = useState<Day | null>(null);
@@ -104,7 +105,7 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                 clearInterval(timerRef.current);
             }
         };
-    }, []);
+    }, [programId]);
 
     const loadWorkoutState = async () => {
         try {
@@ -183,7 +184,19 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
             const response = await programService.getClientPrograms();
             
             if (response.programs && response.programs.length > 0) {
-                const programData = response.programs[0];
+                // Find the specific program by ID if provided, otherwise use the first one
+                let programData;
+                if (programId) {
+                    programData = response.programs.find((p: Program) => p.id.toString() === programId);
+                    if (!programData) {
+                        console.error('Program not found with ID:', programId);
+                        setLoading(false);
+                        return;
+                    }
+                } else {
+                    programData = response.programs[0];
+                }
+                
                 setProgram(programData);
                 
                 // Get current week and day from the program
