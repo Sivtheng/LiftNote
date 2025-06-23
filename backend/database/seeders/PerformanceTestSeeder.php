@@ -109,10 +109,13 @@ class PerformanceTestSeeder extends Seeder
 
                 // Set current week and day for the program
                 if ($weekNum === 1) {
-                    $program->update([
-                        'current_week_id' => $week->id,
-                        'current_day_id' => $week->programDays->first()->id
-                    ]);
+                    $firstDay = $week->days()->first();
+                    if ($firstDay) {
+                        $program->update([
+                            'current_week_id' => $week->id,
+                            'current_day_id' => $firstDay->id
+                        ]);
+                    }
                 }
             }
 
@@ -120,28 +123,30 @@ class PerformanceTestSeeder extends Seeder
             for ($j = 1; $j <= 5; $j++) {
                 $randomExercise = $exercises[array_rand($exercises)];
                 $randomWeek = $program->programWeeks->random();
-                $randomDay = $randomWeek->programDays->random();
+                $randomDay = $randomWeek->days()->inRandomOrder()->first();
 
-                ProgressLog::updateOrCreate(
-                    [
-                        'program_id' => $program->id,
-                        'user_id' => $client->id,
-                        'completed_at' => now()->subDays($j * 2)
-                    ],
-                    [
-                        'exercise_id' => $randomExercise->id,
-                        'week_id' => $randomWeek->id,
-                        'day_id' => $randomDay->id,
-                        'weight' => rand(50, 200),
-                        'reps' => rand(8, 15),
-                        'sets' => rand(3, 5),
-                        'time_seconds' => rand(1800, 3600), // 30-60 minutes
-                        'rpe' => rand(6, 9),
-                        'workout_duration' => rand(1800, 3600),
-                        'is_rest_day' => false,
-                        'notes' => "Test progress log {$j} for Client {$i}",
-                    ]
-                );
+                if ($randomDay) {
+                    ProgressLog::updateOrCreate(
+                        [
+                            'program_id' => $program->id,
+                            'user_id' => $client->id,
+                            'completed_at' => now()->subDays($j * 2)
+                        ],
+                        [
+                            'exercise_id' => $randomExercise->id,
+                            'week_id' => $randomWeek->id,
+                            'day_id' => $randomDay->id,
+                            'weight' => rand(50, 200),
+                            'reps' => rand(8, 15),
+                            'sets' => rand(3, 5),
+                            'time_seconds' => rand(1800, 3600), // 30-60 minutes
+                            'rpe' => rand(6, 9),
+                            'workout_duration' => rand(1800, 3600),
+                            'is_rest_day' => false,
+                            'notes' => "Test progress log {$j} for Client {$i}",
+                        ]
+                    );
+                }
             }
 
             // Add multiple comments (from both client and coach)
