@@ -85,8 +85,8 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         // Add performance test seeder
-        $this->call([
-            \Database\Seeders\PerformanceTestSeeder::class,
-        ]);
+        // $this->call([
+        //     \Database\Seeders\PerformanceTestSeeder::class,
+        // ]);
     }
 }
