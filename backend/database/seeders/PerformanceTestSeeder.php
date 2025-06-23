@@ -63,28 +63,6 @@ class PerformanceTestSeeder extends Seeder
             );
         }
 
-        // Create questionnaire questions (only if they don't exist from DatabaseSeeder)
-        $questions = [];
-        $questionTexts = [
-            'What is your fitness goal?',
-            'How many days per week can you work out?',
-            'Do you have any injuries?',
-            'What is your current fitness level?',
-            'What equipment do you have access to?'
-        ];
-
-        foreach ($questionTexts as $index => $text) {
-            $questions[] = QuestionnaireQuestion::updateOrCreate(
-                ['question' => $text],
-                [
-                    'type' => ['text', 'multiple_choice', 'text', 'multiple_choice', 'multiple_choice'][$index],
-                    'options' => $index % 2 == 0 ? null : json_encode(['Option 1', 'Option 2', 'Option 3']),
-                    'required' => true,
-                    'order' => $index + 6, // Start after DatabaseSeeder questions
-                ]
-            );
-        }
-
         // Create programs, weeks, days, progress logs, and comments for each client
         foreach ($clients as $i => $client) {
             // Create a program for the client
@@ -232,7 +210,7 @@ class PerformanceTestSeeder extends Seeder
         $this->command->info('- Using existing coach: coach@liftnote.com');
         $this->command->info('- 5 clients: client1@liftnote.com to client5@liftnote.com');
         $this->command->info('- 18 exercises');
-        $this->command->info('- 5 additional questionnaire questions');
+        $this->command->info('- Using existing questionnaire questions (from DatabaseSeeder)');
         $this->command->info('- 5 programs with weeks, days, progress logs, and comments');
         $this->command->info('- 5 questionnaires');
         $this->command->info('Coach password: password (from DatabaseSeeder)');
