@@ -9,6 +9,9 @@ use App\Models\ProgramWeek;
 use App\Models\ProgramDay;
 use App\Models\ProgressLog;
 use App\Models\Comment;
+use App\Models\Exercise;
+use App\Models\Questionnaire;
+use App\Models\QuestionnaireQuestion;
 use Illuminate\Support\Facades\Hash;
 
 class PerformanceTestSeeder extends Seeder
@@ -18,6 +21,13 @@ class PerformanceTestSeeder extends Seeder
      */
     public function run(): void
     {
+        // Get the existing coach from DatabaseSeeder
+        $coach = User::where('email', 'coach@liftnote.com')->first();
+        if (!$coach) {
+            $this->command->error('No coach found. Please run DatabaseSeeder first.');
+            return;
+        }
+
         // Create 5 clients with hardcoded data
         $clients = [];
         for ($i = 1; $i <= 5; $i++) {
@@ -34,11 +44,48 @@ class PerformanceTestSeeder extends Seeder
             );
         }
 
-        // Get the coach
-        $coach = User::where('role', 'coach')->first();
-        if (!$coach) {
-            $this->command->error('No coach found. Please run the main DatabaseSeeder first.');
-            return;
+        // Create exercises for the system
+        $exercises = [];
+        $exerciseNames = [
+            'Bench Press', 'Squat', 'Deadlift', 'Pull-ups', 'Push-ups',
+            'Lunges', 'Planks', 'Burpees', 'Mountain Climbers', 'Jumping Jacks'
+        ];
+
+        foreach ($exerciseNames as $index => $name) {
+            $exercises[] = Exercise::updateOrCreate(
+                ['name' => $name],
+                [
+                    'description' => "Test exercise: {$name}",
+                    'category' => ['strength', 'cardio', 'flexibility'][$index % 3],
+                    'equipment' => ['barbell', 'bodyweight', 'dumbbell'][$index % 3],
+                    'muscle_groups' => json_encode(['chest', 'back', 'legs']),
+                    'instructions' => "Instructions for {$name}",
+                    'video_url' => null,
+                    'image_url' => null,
+                ]
+            );
+        }
+
+        // Create questionnaire questions (only if they don't exist from DatabaseSeeder)
+        $questions = [];
+        $questionTexts = [
+            'What is your fitness goal?',
+            'How many days per week can you work out?',
+            'Do you have any injuries?',
+            'What is your current fitness level?',
+            'What equipment do you have access to?'
+        ];
+
+        foreach ($questionTexts as $index => $text) {
+            $questions[] = QuestionnaireQuestion::updateOrCreate(
+                ['question' => $text],
+                [
+                    'type' => ['text', 'multiple_choice', 'text', 'multiple_choice', 'multiple_choice'][$index],
+                    'options' => $index % 2 == 0 ? null : json_encode(['Option 1', 'Option 2', 'Option 3']),
+                    'required' => true,
+                    'order' => $index + 6, // Start after DatabaseSeeder questions
+                ]
+            );
         }
 
         // Create programs, weeks, days, progress logs, and comments for each client
@@ -60,30 +107,46 @@ class PerformanceTestSeeder extends Seeder
                 ]
             );
 
-            // Create a week for the program
-            $week = ProgramWeek::updateOrCreate(
-                [
-                    'program_id' => $program->id,
-                    'order' => 1
-                ],
-                [
-                    'name' => "Week 1",
-                ]
-            );
+            // Create multiple weeks for the program
+            for ($weekNum = 1; $weekNum <= 3; $weekNum++) {
+                $week = ProgramWeek::updateOrCreate(
+                    [
+                        'program_id' => $program->id,
+                        'order' => $weekNum
+                    ],
+                    [
+                        'name' => "Week {$weekNum}",
+                    ]
+                );
 
-            // Create a day for the week
-            $day = ProgramDay::updateOrCreate(
-                [
-                    'week_id' => $week->id,
-                    'order' => 1
-                ],
-                [
-                    'name' => "Day 1",
-                ]
-            );
+                // Create multiple days for each week
+                for ($dayNum = 1; $dayNum <= 5; $dayNum++) {
+                    $day = ProgramDay::updateOrCreate(
+                        [
+                            'week_id' => $week->id,
+                            'order' => $dayNum
+                        ],
+                        [
+                            'name' => "Day {$dayNum}",
+                        ]
+                    );
+                }
 
-            // Add 3 progress logs
-            for ($j = 1; $j <= 3; $j++) {
+                // Set current week and day for the program
+                if ($weekNum === 1) {
+                    $program->update([
+                        'current_week_id' => $week->id,
+                        'current_day_id' => $week->programDays->first()->id
+                    ]);
+                }
+            }
+
+            // Add multiple progress logs
+            for ($j = 1; $j <= 5; $j++) {
+                $randomExercise = $exercises[array_rand($exercises)];
+                $randomWeek = $program->programWeeks->random();
+                $randomDay = $randomWeek->programDays->random();
+
                 ProgressLog::updateOrCreate(
                     [
                         'program_id' => $program->id,
@@ -91,50 +154,94 @@ class PerformanceTestSeeder extends Seeder
                         'completed_at' => now()->subDays($j * 2)
                     ],
                     [
-                        'exercise_id' => null,
-                        'week_id' => $week->id,
-                        'day_id' => $day->id,
+                        'exercise_id' => $randomExercise->id,
+                        'week_id' => $randomWeek->id,
+                        'day_id' => $randomDay->id,
                         'weight' => rand(50, 200),
                         'reps' => rand(8, 15),
+                        'sets' => rand(3, 5),
                         'time_seconds' => rand(1800, 3600), // 30-60 minutes
                         'rpe' => rand(6, 9),
                         'workout_duration' => rand(1800, 3600),
                         'is_rest_day' => false,
+                        'notes' => "Test progress log {$j} for Client {$i}",
                     ]
                 );
             }
 
-            // Add 2 comments (one from client, one from coach)
-            Comment::updateOrCreate(
+            // Add multiple comments (from both client and coach)
+            for ($k = 1; $k <= 3; $k++) {
+                // Client comment
+                Comment::updateOrCreate(
+                    [
+                        'program_id' => $program->id,
+                        'user_id' => $client->id,
+                        'content' => "Client {$i} comment {$k}: Great workout today!"
+                    ],
+                    [
+                        'media_type' => null,
+                        'media_url' => null,
+                        'parent_id' => null,
+                    ]
+                );
+
+                // Coach comment
+                Comment::updateOrCreate(
+                    [
+                        'program_id' => $program->id,
+                        'user_id' => $coach->id,
+                        'content' => "Coach comment {$k}: Keep up the good work, Client {$i}!"
+                    ],
+                    [
+                        'media_type' => null,
+                        'media_url' => null,
+                        'parent_id' => null,
+                    ]
+                );
+            }
+
+            // Create questionnaire for the client
+            Questionnaire::updateOrCreate(
                 [
-                    'program_id' => $program->id,
-                    'user_id' => $client->id,
-                    'content' => "Client {$i} comment: Great workout today!"
+                    'user_id' => $client->id
                 ],
                 [
-                    'media_type' => null,
-                    'media_url' => null,
-                    'parent_id' => null,
+                    'status' => 'completed',
+                    'completed_at' => now()->subDays(rand(1, 30)),
                 ]
             );
+        }
 
-            Comment::updateOrCreate(
+        // Create additional exercises for variety
+        $additionalExercises = [
+            'Overhead Press', 'Bent Over Rows', 'Leg Press', 'Lat Pulldowns',
+            'Bicep Curls', 'Tricep Dips', 'Shoulder Press', 'Calf Raises'
+        ];
+
+        foreach ($additionalExercises as $name) {
+            Exercise::updateOrCreate(
+                ['name' => $name],
                 [
-                    'program_id' => $program->id,
-                    'user_id' => $coach->id,
-                    'content' => "Coach comment: Keep up the good work, Client {$i}!"
-                ],
-                [
-                    'media_type' => null,
-                    'media_url' => null,
-                    'parent_id' => null,
+                    'description' => "Additional test exercise: {$name}",
+                    'category' => 'strength',
+                    'equipment' => 'barbell',
+                    'muscle_groups' => json_encode(['shoulders', 'arms', 'legs']),
+                    'instructions' => "Instructions for {$name}",
+                    'video_url' => null,
+                    'image_url' => null,
                 ]
             );
         }
 
         $this->command->info('Performance test data created successfully!');
-        $this->command->info('Created 5 clients with programs, weeks, days, progress logs, and comments.');
-        $this->command->info('Client emails: client1@liftnote.com to client5@liftnote.com');
-        $this->command->info('Password for all clients: password123');
+        $this->command->info('Created:');
+        $this->command->info('- Using existing coach: coach@liftnote.com');
+        $this->command->info('- 5 clients: client1@liftnote.com to client5@liftnote.com');
+        $this->command->info('- 18 exercises');
+        $this->command->info('- 5 additional questionnaire questions');
+        $this->command->info('- 5 programs with weeks, days, progress logs, and comments');
+        $this->command->info('- 5 questionnaires');
+        $this->command->info('Coach password: password (from DatabaseSeeder)');
+        $this->command->info('Client passwords: password123');
     }
 } 
