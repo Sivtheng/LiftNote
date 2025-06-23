@@ -44,7 +44,7 @@ class PerformanceTestSeeder extends Seeder
             );
         }
 
-        // Create exercises for the system
+        // Create exercises for the system (using only existing columns)
         $exercises = [];
         $exerciseNames = [
             'Bench Press', 'Squat', 'Deadlift', 'Pull-ups', 'Push-ups',
@@ -55,13 +55,10 @@ class PerformanceTestSeeder extends Seeder
             $exercises[] = Exercise::updateOrCreate(
                 ['name' => $name],
                 [
-                    'description' => "Test exercise: {$name}",
-                    'category' => ['strength', 'cardio', 'flexibility'][$index % 3],
-                    'equipment' => ['barbell', 'bodyweight', 'dumbbell'][$index % 3],
-                    'muscle_groups' => json_encode(['chest', 'back', 'legs']),
-                    'instructions' => "Instructions for {$name}",
-                    'video_url' => null,
-                    'image_url' => null,
+                    'description' => "Test exercise: {$name} - A comprehensive workout movement for strength training.",
+                    'target_type' => $index % 2 == 0 ? 'reps' : 'time',
+                    'video_link' => null,
+                    'created_by' => $coach->id,
                 ]
             );
         }
@@ -222,13 +219,10 @@ class PerformanceTestSeeder extends Seeder
             Exercise::updateOrCreate(
                 ['name' => $name],
                 [
-                    'description' => "Additional test exercise: {$name}",
-                    'category' => 'strength',
-                    'equipment' => 'barbell',
-                    'muscle_groups' => json_encode(['shoulders', 'arms', 'legs']),
-                    'instructions' => "Instructions for {$name}",
-                    'video_url' => null,
-                    'image_url' => null,
+                    'description' => "Additional test exercise: {$name} - A great movement for building strength and muscle.",
+                    'target_type' => 'reps',
+                    'video_link' => null,
+                    'created_by' => $coach->id,
                 ]
             );
         }
