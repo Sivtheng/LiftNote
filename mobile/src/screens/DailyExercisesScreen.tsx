@@ -13,6 +13,7 @@ import {
     Keyboard,
     AppState,
     Alert,
+    Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { programService, progressLogService } from '../services/api';
@@ -27,6 +28,7 @@ interface Exercise {
     measurement_type: string;
     measurement_value: number;
     target_type: 'time' | 'reps';
+    video_link?: string;
     pivot?: {
         sets: number;
         reps?: number;
@@ -177,6 +179,20 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
         const minutes = Math.floor((seconds % 3600) / 60);
         const remainingSeconds = seconds % 60;
         return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    };
+
+    const openVideoLink = async (url: string) => {
+        try {
+            const supported = await Linking.canOpenURL(url);
+            if (supported) {
+                await Linking.openURL(url);
+            } else {
+                Alert.alert('Error', 'Cannot open this video link');
+            }
+        } catch (error) {
+            console.error('Error opening video link:', error);
+            Alert.alert('Error', 'Failed to open video link');
+        }
     };
 
     const fetchProgramData = async () => {
@@ -519,7 +535,17 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
 
                     {currentDay?.exercises.map((exercise, index) => (
                         <View key={exercise.id} style={styles.exerciseContainer}>
-                            <Text style={styles.exerciseTitle}>{index + 1}. {exercise.name}</Text>
+                            <View style={styles.exerciseHeader}>
+                                <Text style={styles.exerciseTitle}>{index + 1}. {exercise.name}</Text>
+                                {exercise.video_link && (
+                                    <TouchableOpacity 
+                                        style={styles.videoButton}
+                                        onPress={() => openVideoLink(exercise.video_link!)}
+                                    >
+                                        <Ionicons name="play-circle-outline" size={24} color="#007AFF" />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
                             
                             <View style={styles.tableHeader}>
                                 <Text style={styles.headerCell}>Set</Text>
@@ -593,10 +619,19 @@ const styles = StyleSheet.create({
     exerciseContainer: {
         marginBottom: 30,
     },
+    exerciseHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
     exerciseTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        marginBottom: 10,
+        flex: 1,
+    },
+    videoButton: {
+        padding: 5,
     },
     tableHeader: {
         flexDirection: 'row',
