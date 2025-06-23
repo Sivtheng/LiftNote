@@ -122,30 +122,33 @@ class PerformanceTestSeeder extends Seeder
             // Add multiple progress logs
             for ($j = 1; $j <= 5; $j++) {
                 $randomExercise = $exercises[array_rand($exercises)];
-                $randomWeek = $program->programWeeks->random();
-                $randomDay = $randomWeek->days()->inRandomOrder()->first();
+                $randomWeek = $program->weeks()->inRandomOrder()->first();
+                
+                if ($randomWeek) {
+                    $randomDay = $randomWeek->days()->inRandomOrder()->first();
 
-                if ($randomDay) {
-                    ProgressLog::updateOrCreate(
-                        [
-                            'program_id' => $program->id,
-                            'user_id' => $client->id,
-                            'completed_at' => now()->subDays($j * 2)
-                        ],
-                        [
-                            'exercise_id' => $randomExercise->id,
-                            'week_id' => $randomWeek->id,
-                            'day_id' => $randomDay->id,
-                            'weight' => rand(50, 200),
-                            'reps' => rand(8, 15),
-                            'sets' => rand(3, 5),
-                            'time_seconds' => rand(1800, 3600), // 30-60 minutes
-                            'rpe' => rand(6, 9),
-                            'workout_duration' => rand(1800, 3600),
-                            'is_rest_day' => false,
-                            'notes' => "Test progress log {$j} for Client {$i}",
-                        ]
-                    );
+                    if ($randomDay) {
+                        ProgressLog::updateOrCreate(
+                            [
+                                'program_id' => $program->id,
+                                'user_id' => $client->id,
+                                'completed_at' => now()->subDays($j * 2)
+                            ],
+                            [
+                                'exercise_id' => $randomExercise->id,
+                                'week_id' => $randomWeek->id,
+                                'day_id' => $randomDay->id,
+                                'weight' => rand(50, 200),
+                                'reps' => rand(8, 15),
+                                'sets' => rand(3, 5),
+                                'time_seconds' => rand(1800, 3600), // 30-60 minutes
+                                'rpe' => rand(6, 9),
+                                'workout_duration' => rand(1800, 3600),
+                                'is_rest_day' => false,
+                                'notes' => "Test progress log {$j} for Client {$i}",
+                            ]
+                        );
+                    }
                 }
             }
 
