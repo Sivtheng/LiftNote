@@ -40,7 +40,6 @@ export default function ProgramListPage() {
                 });
 
                 const data = await response.json();
-                console.log('API Response:', data); // Debug log
 
                 if (!response.ok) {
                     throw new Error(data.message || `HTTP error! status: ${response.status}`);

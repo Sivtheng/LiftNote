@@ -168,15 +168,7 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 throw new Error('No authentication token found');
             }
 
-            console.log('Submitting comment:', {
-                content: newComment.content,
-                hasFile: !!selectedFile,
-                parent_id: newComment.parent_id,
-                programId: programId
-            });
-
             const url = `${API_CONFIG.BASE_URL}/programs/${programId}/comments`;
-            console.log('Making request to:', url);
 
             // Use FormData for better performance (no base64 conversion)
             const formData = new FormData();
@@ -204,9 +196,6 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
                 body: formData
             });
 
-            console.log('Response status:', response.status);
-            console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Response error:', errorText);
@@ -214,7 +203,6 @@ export default function CommentsPage({ params }: { params: Promise<{ id: string;
             }
 
             const data = await response.json();
-            console.log('Response data:', data);
             
             if (newComment.parent_id) {
                 setComments((prev: Comment[]) => updateCommentReplies(prev, newComment.parent_id!, data.comment));

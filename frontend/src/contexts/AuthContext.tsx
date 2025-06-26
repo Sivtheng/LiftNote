@@ -27,15 +27,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const checkAuth = async () => {
             try {
-                console.log('Checking auth status...');
                 const isValid = await authService.checkAuthStatus();
-                console.log('Auth status result:', isValid);
                 setIsAuthenticated(isValid);
                 if (!isValid && window.location.pathname !== '/login') {
-                    console.log('Not authenticated, redirecting to login');
                     router.push('/login');
                 } else if (isValid && window.location.pathname === '/login') {
-                    console.log('Authenticated, redirecting to dashboard');
                     router.push('/dashboard');
                 }
             } catch (error) {

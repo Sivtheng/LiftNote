@@ -24,11 +24,6 @@ export const authService = {
         if (!isClient) throw new Error('Login can only be performed on the client side');
         
         try {
-            console.log('Starting login process...');
-            console.log('Attempting login with credentials:', {
-                email: credentials.email,
-                password: '********'
-            });
 
             const response = await fetch(`${API_URL}/login`, {
                 method: 'POST',
@@ -40,11 +35,7 @@ export const authService = {
                 body: JSON.stringify(credentials),
             });
 
-            console.log('Login Response Status:', response.status);
-            console.log('Login Response Headers:', Object.fromEntries(response.headers.entries()));
-
             const responseText = await response.text();
-            console.log('Raw Response:', responseText);
 
             if (!response.ok) {
                 try {
@@ -63,8 +54,6 @@ export const authService = {
                 console.error('Error parsing success response:', e);
                 throw new Error('Invalid JSON response from server');
             }
-
-            console.log('Login Response Data:', data);
 
             // Verify user is a coach
             if (data.user.role !== 'coach') {
@@ -93,8 +82,6 @@ export const authService = {
                 return;
             }
 
-            console.log('Attempting logout with token...');
-
             const response = await fetch(`${API_URL}/logout`, {
                 method: 'POST',
                 headers: {
@@ -104,8 +91,6 @@ export const authService = {
                     'Authorization': `Bearer ${token}`
                 },
             });
-
-            console.log('Logout Response Status:', response.status);
 
         } catch (error) {
             console.error('Logout error:', error);

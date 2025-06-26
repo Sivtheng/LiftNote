@@ -35,16 +35,12 @@ export default function QuestionnairePage() {
             if (!token) {
                 throw new Error('No authentication token found');
             }
-
-            console.log('Fetching questions with token:', token.substring(0, 10) + '...');
             
             const response = await fetch(`${API_CONFIG.BASE_URL}/questionnaires/questions`, {
                 headers: getAuthHeaders(token)
             });
             
-            console.log('Response status:', response.status);
             const responseData = await response.json().catch(() => ({}));
-            console.log('Response data:', responseData);
             
             if (response.status === 401) {
                 throw new Error('Authentication failed. Please log in again.');

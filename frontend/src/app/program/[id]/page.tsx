@@ -66,11 +66,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
     const [editingDayName, setEditingDayName] = useState<string>('');
 
-    // Add this useEffect for debugging
-    useEffect(() => {
-        console.log('showDayDropdown state:', showDayDropdown);
-    }, [showDayDropdown]);
-
     const fetchProgram = async () => {
         try {
             const token = localStorage.getItem('token');
@@ -87,7 +82,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             }
 
             const data = await response.json();
-            console.log('API Response:', data);
 
             if (!data.program) {
                 throw new Error('Invalid response format: program data missing');
@@ -125,7 +119,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 order: week.order
             }));
 
-            console.log('Processed Program Data:', programData);
             setProgram(programData);
             setWeeks(programData.weeks);
         } catch (error) {
@@ -269,7 +262,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     };
 
     const handleWeekAction = async (weekId: string, action: 'duplicate' | 'delete' | 'rename') => {
-        console.log('handleWeekAction called with:', { weekId, action });
         try {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -285,15 +277,12 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
 
             switch (action) {
                 case 'duplicate': {
-                    console.log('Starting duplicate week process...', { weekId, programId: resolvedParams.id });
                     const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/duplicate`, {
                         method: 'POST',
                         headers: getAuthHeaders(token)
                     });
 
-                    console.log('Duplicate week response status:', response.status);
                     const data = await response.json();
-                    console.log('Duplicate week response data:', data);
 
                     if (!response.ok) {
                         console.error('Failed to duplicate week:', {
@@ -308,8 +297,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                         console.error('Invalid response format: week data missing', data);
                         throw new Error('Invalid response format: week data missing');
                     }
-
-                    console.log('Processing duplicated week data:', data.week);
 
                     // Process the new week data to ensure unique IDs
                     const newWeek = {
@@ -332,12 +319,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                         }))
                     };
 
-                    console.log('Processed new week:', newWeek);
-
                     setWeeks(prevWeeks => {
                         const updatedWeeks = [...prevWeeks];
                         updatedWeeks.splice(weekIndex + 1, 0, newWeek);
-                        console.log('Updated weeks state:', updatedWeeks);
                         return updatedWeeks;
                     });
                     break;
@@ -371,12 +355,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                     break;
                 }
                 case 'rename': {
-                    console.log('Rename case triggered');
                     const week = weeks[weekIndex];
-                    console.log('Current week:', week);
                     setEditingWeekName(week.name);
                     setEditingWeek(weekId);
-                    console.log('State updated:', { editingWeek: weekId, editingWeekName: week.name });
                     break;
                 }
             }
@@ -388,7 +369,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     };
 
     const handleWeekRename = async (weekId: string, newName: string) => {
-        console.log('handleWeekRename called with:', { weekId, newName });
         try {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -412,7 +392,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             });
 
             const data = await response.json();
-            console.log('Rename response:', data);
 
             if (!response.ok) {
                 console.error('Failed to rename week:', {
@@ -434,7 +413,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                     ...updatedWeeks[weekIndex],
                     name: data.week.name
                 };
-                console.log('Updated weeks state:', updatedWeeks);
                 return updatedWeeks;
             });
             setEditingWeek(null);
@@ -446,7 +424,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     };
 
     const handleDayAction = async (weekId: string, dayId: string, action: 'delete' | 'rename' | 'duplicate') => {
-        console.log('handleDayAction called with:', { weekId, dayId, action });
         try {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -468,18 +445,12 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
 
             switch (action) {
                 case 'duplicate': {
-                    console.log('Making duplicate day request...', {
-                        url: `${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/duplicate`,
-                        weekId,
-                        dayId
-                    });
                     const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/duplicate`, {
                         method: 'POST',
                         headers: getAuthHeaders(token)
                     });
 
                     const data = await response.json();
-                    console.log('Duplicate day response:', data);
 
                     if (!response.ok) {
                         console.error('Failed to duplicate day:', {
@@ -512,8 +483,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                         }))
                     };
 
-                    console.log('Processed new day:', newDay);
-
                     // Update the state with the new day
                     setWeeks(prevWeeks => {
                         const updatedWeeks = [...prevWeeks];
@@ -525,7 +494,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                 ...updatedWeeks[weekIndex].days.slice(dayIndex + 1)
                             ]
                         };
-                        console.log('Updated weeks state:', updatedWeeks);
                         return updatedWeeks;
                     });
                     break;
@@ -977,7 +945,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
-                                            console.log('Week dropdown toggle clicked', { weekId: week.id, currentState: showWeekDropdown });
                                             setShowWeekDropdown(showWeekDropdown === week.id ? null : week.id);
                                         }}
                                         className="p-2 hover:bg-gray-100 rounded-lg"
@@ -993,7 +960,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 e.stopPropagation();
-                                                console.log('Week dropdown menu clicked', { weekId: week.id });
                                             }}
                                             role="menu"
                                         >
@@ -1002,7 +968,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    console.log('Week rename button clicked', { weekId: week.id });
                                                     handleWeekAction(week.id, 'rename');
                                                 }}
                                                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -1014,7 +979,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    console.log('Week duplicate button clicked', { weekId: week.id });
                                                     handleWeekAction(week.id, 'duplicate');
                                                 }}
                                                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -1026,7 +990,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    console.log('Week delete button clicked', { weekId: week.id });
                                                     handleWeekAction(week.id, 'delete');
                                                 }}
                                                 className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
@@ -1074,11 +1037,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        console.log('Dropdown toggle clicked', { weekId: week.id, dayId: day.id });
                                                         const newState = showDayDropdown?.weekId === week.id && showDayDropdown?.dayId === day.id
                                                             ? null
                                                             : { weekId: week.id, dayId: day.id };
-                                                        console.log('Setting dropdown state to:', newState);
                                                         setShowDayDropdown(newState);
                                                     }}
                                                     className="p-2 hover:bg-gray-200 rounded-lg"
@@ -1094,7 +1055,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                         onClick={(e) => {
                                                             e.preventDefault();
                                                             e.stopPropagation();
-                                                            console.log('Dropdown menu clicked', { weekId: week.id, dayId: day.id });
                                                         }}
                                                         role="menu"
                                                     >
@@ -1103,7 +1063,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                             onClick={(e) => {
                                                                 e.preventDefault();
                                                                 e.stopPropagation();
-                                                                console.log('Rename button clicked', { weekId: week.id, dayId: day.id });
                                                                 handleDayAction(week.id, day.id, 'rename');
                                                             }}
                                                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -1116,7 +1075,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                             onClick={(e) => {
                                                                 e.preventDefault();
                                                                 e.stopPropagation();
-                                                                console.log('Duplicate button clicked', { weekId: week.id, dayId: day.id });
                                                                 handleDayAction(week.id, day.id, 'duplicate');
                                                             }}
                                                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -1129,7 +1087,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                             onClick={(e) => {
                                                                 e.preventDefault();
                                                                 e.stopPropagation();
-                                                                console.log('Delete button clicked', { weekId: week.id, dayId: day.id });
                                                                 handleDayAction(week.id, day.id, 'delete');
                                                             }}
                                                             className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"

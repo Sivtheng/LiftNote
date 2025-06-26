@@ -34,16 +34,12 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                 throw new Error('No authentication token found');
             }
 
-            console.log(`Fetching progress logs for program ${programId}`);
             const progressResponse = await fetch(`${API_CONFIG.BASE_URL}/programs/${programId}/progress/coach`, {
                 headers: getAuthHeaders(token)
             });
-            
-            console.log(`Progress response status for program ${programId}:`, progressResponse.status);
-            
+                       
             if (progressResponse.ok) {
                 const progressData = await progressResponse.json();
-                console.log(`Progress data for program ${programId}:`, progressData);
                 setProgressLogs(progressData.logs || []);
             } else {
                 const errorText = await progressResponse.text();

@@ -184,16 +184,12 @@ export default function ClientListPage() {
                 if (!token) {
                     throw new Error('No authentication token found');
                 }
-
-                console.log('Fetching clients with token:', token.substring(0, 10) + '...');
                 
                 const response = await fetch(`${API_CONFIG.BASE_URL}/users`, {
                     headers: getAuthHeaders(token)
                 });
 
-                console.log('Response status:', response.status);
                 const data = await response.json();
-                console.log('Response data:', data);
 
                 if (response.status === 401) {
                     throw new Error('Authentication failed. Please log in again.');
