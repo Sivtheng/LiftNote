@@ -101,62 +101,64 @@ export default function HistoryScreen({ navigation }: any) {
                 transparent={true}
                 onRequestClose={() => setSelectedDay(null)}
             >
-                <TouchableOpacity 
-                    style={styles.modalContainer}
-                    activeOpacity={1}
-                    onPress={() => setSelectedDay(null)}
-                >
-                    <TouchableOpacity 
-                        activeOpacity={1} 
-                        onPress={(e) => e.stopPropagation()}
-                        style={styles.modalContent}
-                    >
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{day.name}</Text>
-                            <TouchableOpacity onPress={() => setSelectedDay(null)}>
-                                <Ionicons name="close" size={24} color="#000" />
-                            </TouchableOpacity>
-                        </View>
-                        
-                        <View style={styles.summaryContainer}>
-                            <Text style={styles.summaryTitle}>Workout Summary</Text>
-                            <Text style={styles.summaryText}>
-                                Completed: {completionDate ? formatDate(completionDate) : 'Not completed yet'}
-                            </Text>
-                            {totalDuration > 0 && (
+                <View style={styles.modalContainer}>
+                    {/* Overlay for closing modal when tapping outside */}
+                    <TouchableOpacity
+                        style={styles.modalOverlay}
+                        activeOpacity={1}
+                        onPress={() => setSelectedDay(null)}
+                    />
+                    {/* Modal content at the bottom */}
+                    <View style={styles.modalContentWrapper}>
+                        <ScrollView
+                            contentContainerStyle={styles.modalContent}
+                            keyboardShouldPersistTaps="handled"
+                        >
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>{day.name}</Text>
+                                <TouchableOpacity onPress={() => setSelectedDay(null)}>
+                                    <Ionicons name="close" size={24} color="#000" />
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.summaryContainer}>
+                                <Text style={styles.summaryTitle}>Workout Summary</Text>
                                 <Text style={styles.summaryText}>
-                                    Total Duration: {formatDuration(totalDuration)}
+                                    Completed: {completionDate ? formatDate(completionDate) : 'Not completed yet'}
                                 </Text>
-                            )}
-                        </View>
-
-                        <ScrollView style={styles.exercisesList}>
-                            {day.progress_logs?.map((log) => (
-                                <View key={log.id} style={styles.exerciseLog}>
-                                    <Text style={styles.exerciseName}>
-                                        {log.is_rest_day ? 'Rest Day' : log.exercise?.name || 'Unknown Exercise'}
+                                {totalDuration > 0 && (
+                                    <Text style={styles.summaryText}>
+                                        Total Duration: {formatDuration(totalDuration)}
                                     </Text>
-                                    <View style={styles.exerciseDetails}>
-                                        {!log.is_rest_day && log.weight ? (
-                                            <Text style={styles.exerciseDetail}>Weight: {log.weight}kg</Text>
-                                        ) : null}
-                                        {!log.is_rest_day && log.reps ? (
-                                            <Text style={styles.exerciseDetail}>Reps: {log.reps}</Text>
-                                        ) : null}
-                                        {!log.is_rest_day && log.time_seconds ? (
-                                            <Text style={styles.exerciseDetail}>Time: {formatDuration(log.time_seconds)}</Text>
-                                        ) : null}
-                                        {!log.is_rest_day && log.rpe ? (
-                                            <Text style={styles.exerciseDetail}>RPE: {log.rpe}</Text>
-                                        ) : null}
+                                )}
+                            </View>
+                            {day.progress_logs?.length > 0 ? (
+                                day.progress_logs.map((log) => (
+                                    <View key={log.id} style={styles.exerciseLog}>
+                                        <Text style={styles.exerciseName}>
+                                            {log.is_rest_day ? 'Rest Day' : log.exercise?.name || 'Unknown Exercise'}
+                                        </Text>
+                                        <View style={styles.exerciseDetails}>
+                                            {!log.is_rest_day && log.weight ? (
+                                                <Text style={styles.exerciseDetail}>Weight: {log.weight}kg</Text>
+                                            ) : null}
+                                            {!log.is_rest_day && log.reps ? (
+                                                <Text style={styles.exerciseDetail}>Reps: {log.reps}</Text>
+                                            ) : null}
+                                            {!log.is_rest_day && log.time_seconds ? (
+                                                <Text style={styles.exerciseDetail}>Time: {formatDuration(log.time_seconds)}</Text>
+                                            ) : null}
+                                            {!log.is_rest_day && log.rpe ? (
+                                                <Text style={styles.exerciseDetail}>RPE: {log.rpe}</Text>
+                                            ) : null}
+                                        </View>
                                     </View>
-                                </View>
-                            )) || (
+                                ))
+                            ) : (
                                 <Text style={styles.emptyText}>No exercises completed for this day</Text>
                             )}
                         </ScrollView>
-                    </TouchableOpacity>
-                </TouchableOpacity>
+                    </View>
+                </View>
             </Modal>
         );
     };
@@ -322,12 +324,21 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'flex-end',
     },
-    modalContent: {
+    modalOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        zIndex: 1,
+    },
+    modalContentWrapper: {
         backgroundColor: '#fff',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
-        padding: 20,
+        padding: 0,
         maxHeight: '80%',
+        zIndex: 2,
+        overflow: 'hidden',
+    },
+    modalContent: {
+        padding: 20,
     },
     modalHeader: {
         flexDirection: 'row',
@@ -356,7 +367,6 @@ const styles = StyleSheet.create({
         marginBottom: 5,
     },
     exercisesList: {
-        maxHeight: '60%',
     },
     exerciseLog: {
         backgroundColor: '#fff',
