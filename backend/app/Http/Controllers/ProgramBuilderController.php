@@ -23,6 +23,16 @@ class ProgramBuilderController extends Controller
                 ], 403);
             }
 
+            // Check if program has reached its total weeks limit
+            $currentWeekCount = $program->weeks()->count();
+            if ($currentWeekCount >= $program->total_weeks) {
+                return response()->json([
+                    'message' => 'Cannot add more weeks. Program has reached its maximum of ' . $program->total_weeks . ' weeks.',
+                    'current_weeks' => $currentWeekCount,
+                    'total_weeks' => $program->total_weeks
+                ], 400);
+            }
+
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'order' => 'required|integer|min:1'
@@ -618,92 +628,98 @@ class ProgramBuilderController extends Controller
     public function duplicateDay(Request $request, Program $program, ProgramWeek $week, ProgramDay $day)
     {
         try {
-            \Log::info('Duplicating day', [
-                'program_id' => $program->id,
-                'week_id' => $week->id,
-                'day_id' => $day->id
-            ]);
-
-            // Check if user is authorized
-            if (!auth()->user()->isAdmin() && auth()->user()->id !== $program->coach_id) {
-                \Log::warning('Unauthorized attempt to duplicate day', [
-                    'user_id' => auth()->id(),
-                    'program_id' => $program->id
-                ]);
-                return response()->json(['message' => 'Unauthorized'], 403);
+            // Check authorization
+            if (!Auth::user()->isAdmin() && $program->coach_id !== Auth::id()) {
+                return response()->json([
+                    'message' => 'Unauthorized'
+                ], 403);
             }
 
-            // Verify week belongs to program
-            if ($week->program_id !== $program->id) {
+            // Verify week and day belong to program
+            if ($week->program_id !== $program->id || $day->week_id !== $week->id) {
                 return response()->json([
-                    'message' => 'Week does not belong to this program'
+                    'message' => 'Week or day does not belong to this program'
                 ], 400);
             }
 
-            // Verify day belongs to week
-            if ($day->week_id !== $week->id) {
-                return response()->json([
-                    'message' => 'Day does not belong to this week'
-                ], 400);
-            }
-
-            // Start a transaction
             DB::beginTransaction();
 
-            try {
-                // Load exercises with pivot data
-                $day->load(['exercises' => function($query) {
-                    $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
-                }]);
+            // Create a new day
+            $newDay = $day->replicate();
+            $newDay->name = $day->name . ' (Copy)';
+            $newDay->order = ProgramDay::where('week_id', $week->id)->max('order') + 1;
+            $newDay->save();
 
-                // Create a new day with "(Copy)" appended to the name
-                $newDay = $week->days()->create([
-                    'name' => $day->name . ' (Copy)',
-                    'order' => $week->days()->count() + 1
-                ]);
-
-                \Log::info('Created new day', ['new_day_id' => $newDay->id]);
-
-                // Duplicate all exercises with their pivot data
-                foreach ($day->exercises as $exercise) {
-                    $newDay->exercises()->attach($exercise->id, [
-                        'sets' => $exercise->pivot->sets,
-                        'reps' => $exercise->pivot->reps,
-                        'time_seconds' => $exercise->pivot->time_seconds,
-                        'measurement_type' => $exercise->pivot->measurement_type,
-                        'measurement_value' => $exercise->pivot->measurement_value
-                    ]);
-                }
-
-                \Log::info('Duplicated exercises', ['exercise_count' => count($day->exercises)]);
-
-                // Load the relationships for the response
-                $newDay->load(['exercises' => function ($query) {
-                    $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
-                }]);
-
-                DB::commit();
-
-                \Log::info('Day duplication completed successfully', ['new_day_id' => $newDay->id]);
-
-                return response()->json([
-                    'message' => 'Day duplicated successfully',
-                    'day' => $newDay
-                ]);
-            } catch (\Exception $e) {
-                DB::rollBack();
-                \Log::error('Error during day duplication transaction', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                throw $e;
+            // Duplicate all exercises for this day
+            foreach ($day->exercises as $exercise) {
+                $pivotData = [
+                    'sets' => $exercise->pivot->sets,
+                    'reps' => $exercise->pivot->reps,
+                    'time_seconds' => $exercise->pivot->time_seconds,
+                    'measurement_type' => $exercise->pivot->measurement_type,
+                    'measurement_value' => $exercise->pivot->measurement_value
+                ];
+                $newDay->exercises()->attach($exercise->id, $pivotData);
             }
-        } catch (\Exception $e) {
-            \Log::error('Error duplicating day', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+
+            DB::commit();
+
+            // Load the relationships for the response
+            $newDay->load(['exercises' => function($query) {
+                $query->withPivot(['sets', 'reps', 'time_seconds', 'measurement_type', 'measurement_value']);
+            }]);
+
+            return response()->json([
+                'message' => 'Day duplicated successfully',
+                'day' => $newDay
             ]);
-            return response()->json(['message' => 'Error duplicating day: ' . $e->getMessage()], 500);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error duplicating day: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to duplicate day',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function updateTotalWeeks(Request $request, Program $program)
+    {
+        try {
+            // Check authorization
+            if (!Auth::user()->isAdmin() && $program->coach_id !== Auth::id()) {
+                return response()->json([
+                    'message' => 'Unauthorized'
+                ], 403);
+            }
+
+            $validated = $request->validate([
+                'total_weeks' => 'required|integer|min:1|max:52'
+            ]);
+
+            // Check if new total_weeks is less than current week count
+            $currentWeekCount = $program->weeks()->count();
+            if ($validated['total_weeks'] < $currentWeekCount) {
+                return response()->json([
+                    'message' => 'Cannot reduce total weeks below current week count (' . $currentWeekCount . ' weeks)',
+                    'current_weeks' => $currentWeekCount,
+                    'requested_total_weeks' => $validated['total_weeks']
+                ], 400);
+            }
+
+            $program->update([
+                'total_weeks' => $validated['total_weeks']
+            ]);
+
+            return response()->json([
+                'message' => 'Total weeks updated successfully',
+                'program' => $program->fresh()
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error updating total weeks',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 } 

@@ -142,6 +142,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/weeks/{week}/duplicate', [ProgramBuilderController::class, 'duplicateWeek']);
         });
 
+        // Program settings routes
+        Route::middleware('role:coach,admin')->group(function () {
+            Route::put('/total-weeks', [ProgramBuilderController::class, 'updateTotalWeeks']);
+        });
+
         // Day routes
         Route::middleware('role:coach,admin')->group(function () {
             Route::get('/weeks/{week}/days', [ProgramBuilderController::class, 'getDays']);

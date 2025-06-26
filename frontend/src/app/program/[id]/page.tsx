@@ -45,13 +45,15 @@ interface Program {
         name: string;
     };
     weeks: Week[];
+    total_weeks: number;
+    completed_weeks: number;
 }
 
 export default function ProgramDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const resolvedParams = use(params);
     const router = useRouter();
     const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
-    const [program, setProgram] = useState<Program>({ id: '', title: '', weeks: [] });
+    const [program, setProgram] = useState<Program>({ id: '', title: '', weeks: [], total_weeks: 0, completed_weeks: 0 });
     const [weeks, setWeeks] = useState<Week[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string>('');
@@ -65,6 +67,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
     const [editingDayName, setEditingDayName] = useState<string>('');
+    const [showTotalWeeksModal, setShowTotalWeeksModal] = useState(false);
+    const [newTotalWeeks, setNewTotalWeeks] = useState<number>(0);
+    const [isUpdatingTotalWeeks, setIsUpdatingTotalWeeks] = useState(false);
 
     const fetchProgram = async () => {
         try {
@@ -124,7 +129,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
         } catch (error) {
             console.error('Error fetching program:', error);
             setError(error instanceof Error ? error.message : 'Failed to fetch program');
-            setProgram({ id: '', title: '', weeks: [] });
+            setProgram({ id: '', title: '', weeks: [], total_weeks: 0, completed_weeks: 0 });
             setWeeks([]);
         } finally {
             setIsLoading(false);
@@ -777,13 +782,16 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     const handleDuplicateExercise = async (weekId: string, dayId: string, exercise: Exercise) => {
         try {
             const token = localStorage.getItem('token');
-            if (!token) return;
+            if (!token) {
+                setError('Authentication token not found');
+                return;
+            }
 
             const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}/days/${dayId}/exercises`, {
                 method: 'POST',
                 headers: getAuthHeaders(token),
                 body: JSON.stringify({
-                    name: `${exercise.name} (Copy)`,
+                    name: exercise.name,
                     sets: exercise.sets,
                     reps: exercise.reps,
                     time_seconds: exercise.time_seconds,
@@ -849,6 +857,54 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
         }
     };
 
+    const handleUpdateTotalWeeks = async () => {
+        try {
+            setIsUpdatingTotalWeeks(true);
+            const token = localStorage.getItem('token');
+            if (!token) {
+                setError('Authentication token not found');
+                return;
+            }
+
+            const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/total-weeks`, {
+                method: 'PUT',
+                headers: getAuthHeaders(token),
+                body: JSON.stringify({
+                    total_weeks: newTotalWeeks
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                console.error('Failed to update total weeks:', {
+                    status: response.status,
+                    statusText: response.statusText,
+                    error: errorData
+                });
+                throw new Error(errorData?.message || `Failed to update total weeks: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (!data.program) {
+                throw new Error('Invalid response format: program data missing');
+            }
+
+            // Update the program state
+            setProgram(prevProgram => ({
+                ...prevProgram,
+                total_weeks: data.program.total_weeks
+            }));
+
+            setShowTotalWeeksModal(false);
+            setNewTotalWeeks(0);
+        } catch (error) {
+            console.error('Error updating total weeks:', error);
+            setError(error instanceof Error ? error.message : 'Failed to update total weeks');
+        } finally {
+            setIsUpdatingTotalWeeks(false);
+        }
+    };
+
     // Add a safety check before rendering
     useEffect(() => {
         if (!Array.isArray(weeks)) {
@@ -897,6 +953,20 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                             </p>
                             <p className="text-lg text-gray-600">
                                 <span className="font-semibold">Description:</span> {program.description || 'No description provided'}
+                            </p>
+                            <p className="text-lg text-gray-600">
+                                <span className="font-semibold">Weeks:</span> {weeks.length} of {program.total_weeks} weeks
+                                {weeks.length >= program.total_weeks && (
+                                    <button
+                                        onClick={() => {
+                                            setNewTotalWeeks(program.total_weeks + 1);
+                                            setShowTotalWeeksModal(true);
+                                        }}
+                                        className="ml-2 px-3 py-1 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                    >
+                                        Increase Limit
+                                    </button>
+                                )}
                             </p>
                         </div>
                     </div>
@@ -1235,13 +1305,28 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                     {/* Add Week Card */}
                     <button
                         onClick={handleAddWeek}
-                        className="bg-white rounded-xl shadow-lg p-6 border-2 border-dashed border-gray-300 hover:border-indigo-500 hover:bg-gray-50 transition-colors duration-200"
+                        disabled={weeks.length >= program.total_weeks}
+                        className={`bg-white rounded-xl shadow-lg p-6 border-2 border-dashed transition-colors duration-200 ${
+                            weeks.length >= program.total_weeks
+                                ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                                : 'border-gray-300 hover:border-indigo-500 hover:bg-gray-50'
+                        }`}
                     >
                         <div className="text-center">
-                            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className={`mx-auto h-12 w-12 ${weeks.length >= program.total_weeks ? 'text-gray-300' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                             </svg>
-                            <p className="mt-2 text-lg font-medium text-gray-900">Add Week</p>
+                            <p className={`mt-2 text-lg font-medium ${weeks.length >= program.total_weeks ? 'text-gray-400' : 'text-gray-900'}`}>
+                                {weeks.length >= program.total_weeks 
+                                    ? `Maximum weeks reached (${program.total_weeks})`
+                                    : 'Add Week'
+                                }
+                            </p>
+                            {weeks.length >= program.total_weeks && (
+                                <p className="mt-1 text-sm text-gray-500">
+                                    Increase the week limit to add more weeks
+                                </p>
+                            )}
                         </div>
                     </button>
                 </div>
@@ -1260,6 +1345,52 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 dayId={selectedDay?.id || ''}
                 editingExercise={editingExercise}
             />
+
+            {/* Total Weeks Modal */}
+            {showTotalWeeksModal && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                    <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div className="mt-3">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">Increase Week Limit</h3>
+                            <p className="text-sm text-gray-600 mb-4">
+                                Current limit: {program.total_weeks} weeks. Current weeks: {weeks.length}
+                            </p>
+                            <div className="mb-4">
+                                <label htmlFor="newTotalWeeks" className="block text-sm font-medium text-gray-700 mb-2">
+                                    New Total Weeks
+                                </label>
+                                <input
+                                    type="number"
+                                    id="newTotalWeeks"
+                                    min={weeks.length}
+                                    max={52}
+                                    value={newTotalWeeks}
+                                    onChange={(e) => setNewTotalWeeks(parseInt(e.target.value) || 0)}
+                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                            </div>
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    onClick={() => {
+                                        setShowTotalWeeksModal(false);
+                                        setNewTotalWeeks(0);
+                                    }}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-transparent rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleUpdateTotalWeeks}
+                                    disabled={isUpdatingTotalWeeks || newTotalWeeks <= program.total_weeks}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isUpdatingTotalWeeks ? 'Updating...' : 'Update'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 } 
