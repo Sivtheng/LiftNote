@@ -56,6 +56,10 @@ interface Program {
     weeks: Week[];
     current_week?: Week;
     current_day?: Day;
+    status?: string;
+    completed_weeks?: number;
+    total_weeks?: number;
+    client_id?: number;
 }
 
 interface ExerciseLog {
@@ -258,6 +262,13 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
         return incompleteExercises;
     };
 
+    const isProgramCompleted = (): boolean => {
+        if (!program) return false;
+        return program.status === 'completed' || 
+               (program.completed_weeks !== undefined && program.total_weeks !== undefined && 
+                program.completed_weeks >= program.total_weeks);
+    };
+
     const handleFinish = async () => {
         try {
             if (timerRef.current) {
@@ -305,6 +316,17 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                     }
                 }
             }
+
+            // Check if this might be the last day of the week and try to mark week as complete
+            if (currentWeek) {
+                try {
+                    await programService.markWeekComplete(program?.id.toString() || '', currentWeek.id.toString());
+                } catch (error) {
+                    // If it fails (e.g., not the next week in sequence), that's okay
+                    console.log('Week not ready to be marked complete yet:', error);
+                }
+            }
+            
             navigation.goBack();
         } catch (error: any) {
             console.error('Error saving progress:', error);
@@ -505,8 +527,20 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                         <Ionicons name="chevron-back" size={24} color="#007AFF" />
                     </TouchableOpacity>
                     {!isWorkoutStarted ? (
-                        <TouchableOpacity onPress={startWorkout} style={styles.startButton}>
-                            <Text style={styles.startButtonText}>Start Workout</Text>
+                        <TouchableOpacity 
+                            onPress={startWorkout} 
+                            style={[
+                                styles.startButton,
+                                isProgramCompleted() && styles.disabledButton
+                            ]}
+                            disabled={isProgramCompleted()}
+                        >
+                            <Text style={[
+                                styles.startButtonText,
+                                isProgramCompleted() && styles.disabledButtonText
+                            ]}>
+                                {isProgramCompleted() ? 'Program Completed' : 'Start Workout'}
+                            </Text>
                         </TouchableOpacity>
                     ) : (
                         <TouchableOpacity onPress={handleFinishPress} style={styles.finishButton}>
@@ -739,5 +773,11 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 18,
         fontWeight: 'bold',
+    },
+    disabledButton: {
+        backgroundColor: '#ccc',
+    },
+    disabledButtonText: {
+        color: '#666',
     },
 }); 

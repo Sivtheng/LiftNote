@@ -56,7 +56,6 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/coach', [ProgramController::class, 'getCoachPrograms']);
             Route::put('/{program}', [ProgramController::class, 'update']);
             Route::delete('/{program}', [ProgramController::class, 'destroy']);
-            Route::post('/{program}/weeks/{week}/complete', [ProgramController::class, 'markWeekComplete']);
             Route::post('/{program}/duplicate', [ProgramController::class, 'duplicate']);
             Route::post('/{program}/assign-client', [ProgramController::class, 'assignClient']);
         });
@@ -64,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Client Routes
         Route::middleware('role:client')->group(function () {
             Route::get('/client', [ProgramController::class, 'getClientPrograms']);
+            Route::post('/{program}/weeks/{week}/complete', [ProgramController::class, 'markWeekComplete']);
         });
 
         // Shared Routes (authorized in controller)

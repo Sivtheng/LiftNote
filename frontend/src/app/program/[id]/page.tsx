@@ -981,7 +981,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 {/* Weeks Grid */}
                 <div className="grid grid-cols-1 gap-6">
                     {Array.isArray(weeks) && weeks.map((week) => (
-                        <div key={week.id} className="bg-white rounded-xl shadow-lg p-6">
+                        <div key={week.id} className={`bg-white rounded-xl shadow-lg p-6 ${
+                            week.order <= program.completed_weeks ? 'border-l-4 border-l-green-500' : ''
+                        }`}>
                             <div className="flex justify-between items-center mb-4">
                                 {editingWeek === week.id ? (
                                     <input
@@ -1008,7 +1010,14 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                         autoFocus
                                     />
                                 ) : (
-                                    <h3 className="text-xl font-semibold text-gray-900">{week.name}</h3>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-xl font-semibold text-gray-900">{week.name}</h3>
+                                        {week.order <= program.completed_weeks && (
+                                            <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                                Completed
+                                            </span>
+                                        )}
+                                    </div>
                                 )}
                                 <div className="relative" ref={dropdownRef}>
                                     <button

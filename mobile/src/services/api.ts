@@ -198,8 +198,13 @@ export const programService = {
         return response.data;
     },
     markWeekComplete: async (programId: string, weekId: string) => {
-        const response = await api.post(`/programs/${programId}/weeks/${weekId}/complete`);
-        return response.data;
+        try {
+            const response = await api.post(`/programs/${programId}/weeks/${weekId}/complete`);
+            return response.data;
+        } catch (error) {
+            console.error('Mark week complete error:', error);
+            throw error;
+        }
     },
 };
 
