@@ -21,6 +21,8 @@ return [
         'http://192.168.43.233:3000',
         'exp://192.168.43.233:8081', // Expo development server
         'exp://localhost:8081', // Expo development server (localhost)
+        'https://liftnote.vercel.app', // Vercel deployment
+        'https://*.vercel.app', // Any Vercel subdomain
     ],
 
     'allowed_origins_patterns' => [],
