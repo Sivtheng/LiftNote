@@ -91,7 +91,8 @@ class AuthController extends Controller
             // Check if this is a mobile app request
             $isMobileApp = $request->header('X-Requested-With') === 'XMLHttpRequest' && 
                           $request->header('Accept') === 'application/json' &&
-                          strpos($request->header('Origin'), 'localhost:3000') === false;
+                          strpos($request->header('Origin'), 'localhost:3000') === false &&
+                          strpos($request->header('Origin'), 'vercel.app') === false;
 
             // Only allow client login for mobile app
             if ($isMobileApp && !$user->isClient()) {
