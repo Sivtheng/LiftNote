@@ -163,10 +163,13 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
     };
 
     const startWorkout = () => {
+        if (isProgramCompleted()) {
+            return;
+        }
         setIsWorkoutStarted(true);
         setWorkoutDuration(0);
-        saveWorkoutState(true);
         startTimer();
+        saveWorkoutState(true);
     };
 
     const startTimer = () => {
@@ -530,6 +533,31 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
     }
 
     if (!currentDay.exercises || currentDay.exercises.length === 0) {
+        // Check if program is completed - if so, show completion screen instead of rest day
+        if (isProgramCompleted()) {
+            return (
+                <SafeAreaView style={styles.container}>
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                            <Ionicons name="chevron-back" size={24} color="#007AFF" />
+                        </TouchableOpacity>
+                        <Text style={styles.headerTitle}>Daily Exercises</Text>
+                    </View>
+                    <View style={styles.restDayContainer}>
+                        <Ionicons name="trophy-outline" size={80} color="#007AFF" style={styles.restIcon} />
+                        <Text style={styles.restDayTitle}>Program Completed!</Text>
+                        <Text style={styles.restDayText}>Congratulations! You have successfully completed this program. Great job on your fitness journey!</Text>
+                        <TouchableOpacity 
+                            style={styles.doneRestingButton}
+                            onPress={() => navigation.goBack()}
+                        >
+                            <Text style={styles.doneRestingButtonText}>Back to Home</Text>
+                        </TouchableOpacity>
+                    </View>
+                </SafeAreaView>
+            );
+        }
+        
         return (
             <SafeAreaView style={styles.container}>
                 <View style={styles.header}>

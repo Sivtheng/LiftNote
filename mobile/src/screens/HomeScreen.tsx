@@ -43,6 +43,7 @@ interface Program {
     current_day?: any;
     completed_weeks?: number;
     total_weeks?: number;
+    status?: string;
 }
 
 export default function HomeScreen() {
@@ -157,9 +158,20 @@ export default function HomeScreen() {
             } else {
                 setRecentComments([]);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching comments for program:', program.id, error);
-            setRecentComments([]);
+            if (error.response) {
+                console.error('Comments error response:', error.response.data);
+                console.error('Comments error status:', error.response.status);
+            }
+            
+            // Handle 404 gracefully - program might not exist or be accessible
+            if (error.response?.status === 404) {
+                setRecentComments([]);
+            } else {
+                // For other errors, still set empty comments but log the error
+                setRecentComments([]);
+            }
         }
     };
 
