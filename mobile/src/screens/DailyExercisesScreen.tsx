@@ -269,6 +269,36 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                 program.completed_weeks >= program.total_weeks);
     };
 
+    const refreshProgramData = async () => {
+        try {
+            const response = await programService.getClientPrograms();
+            
+            if (response.programs && response.programs.length > 0) {
+                // Find the specific program by ID if provided, otherwise use the first one
+                let programData;
+                if (programId) {
+                    programData = response.programs.find((p: Program) => p.id.toString() === programId);
+                    if (!programData) {
+                        console.error('Program not found with ID:', programId);
+                        return;
+                    }
+                } else {
+                    programData = response.programs[0];
+                }
+                
+                setProgram(programData);
+                
+                // Get current week and day from the program
+                if (programData.current_week && programData.current_day) {
+                    setCurrentWeek(programData.current_week);
+                    setCurrentDay(programData.current_day);
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing program data:', error);
+        }
+    };
+
     const handleFinish = async () => {
         try {
             if (timerRef.current) {
@@ -321,9 +351,16 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
             if (currentWeek) {
                 try {
                     await programService.markWeekComplete(program?.id.toString() || '', currentWeek.id.toString());
-                } catch (error) {
-                    // If it fails (e.g., not the next week in sequence), that's okay
-                    console.log('Week not ready to be marked complete yet:', error);
+                    // Refresh program data to get updated completion status
+                    await refreshProgramData();
+                } catch (error: any) {
+                    // If it's "Week already completed", that's fine - still refresh data
+                    if (error.response?.data?.message === 'Week already completed') {
+                        await refreshProgramData();
+                    } else {
+                        // If it fails for other reasons (e.g., not the next week in sequence), that's okay
+                        console.log('Week not ready to be marked complete yet:', error);
+                    }
                 }
             }
             

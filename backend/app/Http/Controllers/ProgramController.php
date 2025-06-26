@@ -429,6 +429,14 @@ class ProgramController extends Controller
                 ], 403);
             }
 
+            // Check if this week is already completed (week order <= completed_weeks)
+            if ($week->order <= $program->completed_weeks) {
+                return response()->json([
+                    'message' => 'Week already completed',
+                    'program' => $program->fresh()
+                ]);
+            }
+
             // Check if this week is the next one to be completed
             if ($week->order !== $program->completed_weeks + 1) {
                 return response()->json([
