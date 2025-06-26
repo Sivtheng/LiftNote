@@ -4,8 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Production API configuration
 const API_URL = 'https://api-liftnote.xyz/api';
 
-console.log('Mobile app connecting to:', API_URL);
-
 const api = axios.create({
     baseURL: API_URL,
     headers: {
@@ -285,8 +283,6 @@ export const commentService = {
                     }
                 }
                 
-                console.log('Preparing FormData upload for:', media.uri);
-                
                 // Create file object for FormData
                 const fileData = {
                     uri: media.uri,
@@ -295,15 +291,6 @@ export const commentService = {
                 };
                 
                 formData.append('media_file', fileData as any);
-                
-                console.log('FormData prepared:', {
-                    hasContent: !!content,
-                    hasMedia: !!media,
-                    hasParentId: !!parentId,
-                    parentId: parentId,
-                    mediaType: mimeType,
-                    mediaName: media.name
-                });
             }
 
             // Use a separate axios instance for FormData to avoid JSON headers

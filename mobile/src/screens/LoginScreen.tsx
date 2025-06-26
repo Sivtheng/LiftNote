@@ -62,9 +62,7 @@ export default function LoginScreen({ navigation }: any) {
 
         try {
             setForgotLoading(true);
-            console.log('Sending password reset request for email:', email);
             const response = await authService.requestPasswordReset(email);
-            console.log('Password reset response:', response);
             Alert.alert(
                 'Password Reset',
                 'A password reset link has been sent to your email. Please check your inbox.',

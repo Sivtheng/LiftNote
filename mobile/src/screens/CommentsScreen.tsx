@@ -160,9 +160,7 @@ export default function CommentsScreen() {
 
     const fetchPrograms = async () => {
         try {
-            console.log('Fetching programs...');
             const response = await programService.getClientPrograms();
-            console.log('Programs data:', response);
             const programsData = (response as ProgramsResponse).programs;
             setPrograms(programsData);
             if (programsData.length > 0) {
@@ -184,9 +182,7 @@ export default function CommentsScreen() {
                 setRefreshing(true);
             }
             
-            console.log('Fetching comments for program:', selectedProgramId);
             const response = await commentService.getProgramComments(selectedProgramId);
-            console.log('Comments data:', response);
             const commentsData = (response as CommentsResponse).comments;
             setComments(commentsData);
         } catch (err) {
@@ -242,14 +238,6 @@ export default function CommentsScreen() {
                     }
                 }
                 
-                console.log('Selected media:', {
-                    uri: asset.uri,
-                    type: asset.type,
-                    fileName: fileName,
-                    fileSize: asset.fileSize,
-                    duration: asset.duration
-                });
-                
                 const mediaData = {
                     uri: asset.uri,
                     type: asset.type || 'image',
@@ -285,15 +273,12 @@ export default function CommentsScreen() {
             if (selectedMedia) {
                 setUploadingMedia(true);
             }
-            console.log('Adding new comment:', { content: newComment, hasMedia: !!selectedMedia });
             
             const response = await commentService.addProgramCommentWithMedia(
                 selectedProgramId, 
                 newComment, 
                 selectedMedia
             );
-            
-            console.log('Added comment response:', response);
             
             // Handle different response structures
             let addedComment: Comment;
@@ -333,7 +318,6 @@ export default function CommentsScreen() {
                 replyMedia,
                 replyingTo.toString()
             );
-            console.log('Added reply response:', response);
             
             // Refresh comments to get the updated structure
             await fetchComments();
@@ -350,13 +334,6 @@ export default function CommentsScreen() {
     };
 
     const canEditComment = (comment: Comment): boolean => {
-        console.log('Checking edit permission:', {
-            currentUser: currentUser,
-            commentUserId: comment.user_id,
-            commentId: comment.id,
-            mediaType: comment.media_type,
-            userCanEdit: currentUser && comment.media_type === 'text' && (currentUser.role === 'admin' || currentUser.id === comment.user_id)
-        });
         
         if (!currentUser) return false;
         
@@ -373,12 +350,6 @@ export default function CommentsScreen() {
     };
 
     const canDeleteComment = (comment: Comment): boolean => {
-        console.log('Checking delete permission:', {
-            currentUser: currentUser,
-            commentUserId: comment.user_id,
-            commentId: comment.id,
-            userCanDelete: currentUser && (currentUser.role === 'admin' || currentUser.id === comment.user_id)
-        });
         
         if (!currentUser) return false;
         
@@ -407,7 +378,6 @@ export default function CommentsScreen() {
         try {
             setSubmitting(true);
             const response = await commentService.updateComment(selectedProgramId, commentId.toString(), editContent);
-            console.log('Updated comment response:', response);
             
             // Update comment in state
             const updateCommentInState = (comments: Comment[], targetId: number, updatedComment: Comment): Comment[] => {

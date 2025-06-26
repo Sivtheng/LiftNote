@@ -219,11 +219,7 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                 if (programData.current_week && programData.current_day) {
                     setCurrentWeek(programData.current_week);
                     setCurrentDay(programData.current_day);
-                } else {
-                    console.log('No current week/day found in program');
                 }
-            } else {
-                console.log('No programs found in response');
             }
         } catch (error) {
             console.error('Error fetching program data:', error);
