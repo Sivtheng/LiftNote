@@ -17,6 +17,7 @@ export interface Client {
     created_at?: string;
     updated_at?: string;
     client_programs?: Program[];
+    current_program?: Program;
 }
 
 export interface Questionnaire {
