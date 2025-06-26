@@ -74,4 +74,14 @@ class Program extends Model
     {
         return $this->belongsTo(ProgramDay::class, 'current_day_id');
     }
+
+    public function resequenceWeeks()
+    {
+        $weeks = $this->weeks()->orderBy('order')->get();
+        $i = 1;
+        foreach ($weeks as $week) {
+            $week->order = $i++;
+            $week->save();
+        }
+    }
 }

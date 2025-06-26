@@ -301,6 +301,9 @@ class ProgramBuilderController extends Controller
 
             DB::commit();
 
+            // Resequence week order after deletion
+            $program->resequenceWeeks();
+
             \Log::info('Week deleted successfully', ['week_id' => $week->id]);
 
             return response()->json([
@@ -587,6 +590,9 @@ class ProgramBuilderController extends Controller
             }
 
             DB::commit();
+
+            // Resequence week order after duplication
+            $program->resequenceWeeks();
 
             // Load the relationships for the response
             $newWeek->load(['days' => function($query) {
