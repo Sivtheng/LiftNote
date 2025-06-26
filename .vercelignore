@@ -1,0 +1,14 @@
+# Ignore everything except frontend
+backend/
+mobile/
+docker/
+nginx/
+scripts/
+.github/
+*.md
+docker-compose*.yml
+.env*
+clients.csv
+jmeter*
+*.jmx
+*.log 
