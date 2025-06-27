@@ -425,7 +425,7 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
         const currentSetLog = exerciseLogs[exercise.id]?.[setIndex] || {};
 
         return (
-            <View key={setIndex} style={styles.tableRow}>
+            <View style={styles.tableRow}>
                 <Text style={styles.cell}>{setIndex + 1}</Text>
                 <Text style={styles.cell}>
                     {(() => {
@@ -628,7 +628,11 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                     <Text style={styles.weekTitle}>{currentWeek?.name}</Text>
                     <Text style={styles.dayTitle}>{currentDay?.name}</Text>
 
-                    {currentDay?.exercises.map((exercise, index) => (
+                    {currentDay?.exercises
+                        .filter((exercise, index, self) => 
+                            index === self.findIndex(e => e.id === exercise.id)
+                        )
+                        .map((exercise, index) => (
                         <View key={exercise.id} style={styles.exerciseContainer}>
                             <View style={styles.exerciseHeader}>
                                 <Text style={styles.exerciseTitle}>{index + 1}. {exercise.name}</Text>
@@ -655,7 +659,9 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                             </View>
 
                             {Array.from({ length: exercise.pivot?.sets || exercise.sets }).map((_, setIndex) => 
-                                renderExerciseInputs(exercise, setIndex)
+                                <React.Fragment key={`set-${exercise.id}-${setIndex}`}>
+                                    {renderExerciseInputs(exercise, setIndex)}
+                                </React.Fragment>
                             )}
                         </View>
                     ))}
