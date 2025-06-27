@@ -188,21 +188,35 @@ export const programService = {
         try {
             const response = await api.get('/programs/client');
             return response.data;
-        } catch (error) {
+        } catch (error: any) {
             console.error('Get client programs error:', error);
+            if (error.response?.status === 404) {
+                throw new Error('No programs found or access denied');
+            }
             throw error;
         }
     },
     getProgram: async (programId: string) => {
-        const response = await api.get(`/programs/${programId}`);
-        return response.data;
+        try {
+            const response = await api.get(`/programs/${programId}`);
+            return response.data;
+        } catch (error: any) {
+            console.error('Get program error:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program not found or has been deleted');
+            }
+            throw error;
+        }
     },
     markWeekComplete: async (programId: string, weekId: string) => {
         try {
             const response = await api.post(`/programs/${programId}/weeks/${weekId}/complete`);
             return response.data;
-        } catch (error) {
+        } catch (error: any) {
             console.error('Mark week complete error:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program or week not found');
+            }
             throw error;
         }
     },
@@ -211,34 +225,82 @@ export const programService = {
 // Progress Log Services
 export const progressLogService = {
     createLog: async (programId: string, logData: any) => {
-        const response = await api.post(`/programs/${programId}/progress`, logData);
-        return response.data;
+        try {
+            const response = await api.post(`/programs/${programId}/progress`, logData);
+            return response.data;
+        } catch (error: any) {
+            console.error('Create progress log error:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program not found or has been deleted');
+            }
+            throw error;
+        }
     },
     updateLog: async (logId: string, logData: any) => {
-        const response = await api.put(`/progress-logs/${logId}`, logData);
-        return response.data;
+        try {
+            const response = await api.put(`/progress-logs/${logId}`, logData);
+            return response.data;
+        } catch (error: any) {
+            console.error('Update progress log error:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Progress log not found');
+            }
+            throw error;
+        }
     },
     deleteLog: async (logId: string) => {
-        await api.delete(`/progress-logs/${logId}`);
+        try {
+            await api.delete(`/progress-logs/${logId}`);
+        } catch (error: any) {
+            console.error('Delete progress log error:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Progress log not found');
+            }
+            throw error;
+        }
     },
     getProgramLogs: async (programId: string) => {
-        const response = await api.get(`/programs/${programId}/progress`);
-        return response.data;
+        try {
+            const response = await api.get(`/programs/${programId}/progress`);
+            return response.data;
+        } catch (error: any) {
+            console.error('Get program logs error:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program not found or has been deleted');
+            }
+            throw error;
+        }
     },
 };
 
 // Comment Services
 export const commentService = {
     getProgramComments: async (programId: string) => {
-        const response = await api.get(`/programs/${programId}/comments`);
-        return response.data;
+        try {
+            const response = await api.get(`/programs/${programId}/comments`);
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching program comments:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program not found or has been deleted');
+            }
+            throw error;
+        }
     },
     addProgramComment: async (programId: string, content: string, parentId?: string) => {
-        const response = await api.post(`/programs/${programId}/comments`, {
-            content,
-            parent_id: parentId
-        });
-        return response.data;
+        try {
+            const response = await api.post(`/programs/${programId}/comments`, {
+                content,
+                parent_id: parentId
+            });
+            return response.data;
+        } catch (error: any) {
+            console.error('Error adding program comment:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program not found or has been deleted');
+            }
+            throw error;
+        }
     },
     addProgramCommentWithMedia: async (programId: string, content: string, media?: {
         uri: string;
@@ -332,6 +394,9 @@ export const commentService = {
             return response.data;
         } catch (error: any) {
             console.error('Error adding comment with media:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program not found or has been deleted');
+            }
             if (error.response) {
                 console.error('Response data:', error.response.data);
                 console.error('Response status:', error.response.status);
@@ -341,22 +406,54 @@ export const commentService = {
         }
     },
     updateComment: async (programId: string, commentId: string, content: string) => {
-        const response = await api.put(`/programs/${programId}/comments/${commentId}`, {
-            content
-        });
-        return response.data;
+        try {
+            const response = await api.put(`/programs/${programId}/comments/${commentId}`, {
+                content
+            });
+            return response.data;
+        } catch (error: any) {
+            console.error('Error updating comment:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program or comment not found');
+            }
+            throw error;
+        }
     },
     deleteComment: async (programId: string, commentId: string) => {
-        const response = await api.delete(`/programs/${programId}/comments/${commentId}`);
-        return response.data;
+        try {
+            const response = await api.delete(`/programs/${programId}/comments/${commentId}`);
+            return response.data;
+        } catch (error: any) {
+            console.error('Error deleting comment:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program or comment not found');
+            }
+            throw error;
+        }
     },
     getRecentComments: async (programId: string) => {
-        const response = await api.get(`/programs/${programId}/comments`);
-        return response.data;
+        try {
+            const response = await api.get(`/programs/${programId}/comments`);
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching recent comments:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program not found or has been deleted');
+            }
+            throw error;
+        }
     },
     getCoachComments: async (programId: string) => {
-        const response = await api.get(`/programs/${programId}/comments?role=coach`);
-        return response.data;
+        try {
+            const response = await api.get(`/programs/${programId}/comments?role=coach`);
+            return response.data;
+        } catch (error: any) {
+            console.error('Error fetching coach comments:', error);
+            if (error.response?.status === 404) {
+                throw new Error('Program not found or has been deleted');
+            }
+            throw error;
+        }
     },
 };
 

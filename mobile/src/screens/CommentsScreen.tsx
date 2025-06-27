@@ -163,12 +163,31 @@ export default function CommentsScreen() {
             const response = await programService.getClientPrograms();
             const programsData = (response as ProgramsResponse).programs;
             setPrograms(programsData);
-            if (programsData.length > 0) {
+            
+            // Check if the currently selected program still exists
+            if (selectedProgramId) {
+                const programStillExists = programsData.some(program => program.id.toString() === selectedProgramId);
+                if (!programStillExists) {
+                    // Clear the selected program if it no longer exists
+                    setSelectedProgramId(null);
+                    setComments([]);
+                    setError('The previously selected program is no longer available.');
+                }
+            }
+            
+            // Set the first program as selected if no program is currently selected
+            if (!selectedProgramId && programsData.length > 0) {
                 setSelectedProgramId(programsData[0].id.toString());
             }
-        } catch (err) {
+            
+            setError(null); // Clear any previous errors
+        } catch (err: any) {
             console.error('Error fetching programs:', err);
             setError(err instanceof Error ? err.message : 'Failed to fetch programs');
+            // Clear programs and selected program on error
+            setPrograms([]);
+            setSelectedProgramId(null);
+            setComments([]);
         } finally {
             setLoading(false);
         }
@@ -185,9 +204,21 @@ export default function CommentsScreen() {
             const response = await commentService.getProgramComments(selectedProgramId);
             const commentsData = (response as CommentsResponse).comments;
             setComments(commentsData);
-        } catch (err) {
+            setError(null); // Clear any previous errors
+        } catch (err: any) {
             console.error('Error fetching comments:', err);
-            setError(err instanceof Error ? err.message : 'Failed to fetch comments');
+            
+            // Check if the error is due to program not found (404)
+            if (err.response?.status === 404) {
+                setError('This program has been deleted or is no longer available.');
+                // Clear the selected program since it no longer exists
+                setSelectedProgramId(null);
+                setComments([]);
+                // Refresh the programs list to remove the deleted program
+                fetchPrograms();
+            } else {
+                setError(err instanceof Error ? err.message : 'Failed to fetch comments');
+            }
         } finally {
             if (isRefreshing) {
                 setRefreshing(false);

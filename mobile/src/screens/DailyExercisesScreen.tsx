@@ -213,6 +213,11 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                     programData = response.programs.find((p: Program) => p.id.toString() === programId);
                     if (!programData) {
                         console.error('Program not found with ID:', programId);
+                        Alert.alert(
+                            'Program Not Found',
+                            'The program you are looking for has been deleted or is no longer available.',
+                            [{ text: 'OK', onPress: () => navigation.goBack() }]
+                        );
                         setLoading(false);
                         return;
                     }
@@ -227,9 +232,20 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                     setCurrentWeek(programData.current_week);
                     setCurrentDay(programData.current_day);
                 }
+            } else {
+                Alert.alert(
+                    'No Programs Available',
+                    'You don\'t have any programs assigned to you.',
+                    [{ text: 'OK', onPress: () => navigation.goBack() }]
+                );
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching program data:', error);
+            Alert.alert(
+                'Error',
+                error.message || 'Failed to load program data. Please try again.',
+                [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
         } finally {
             setLoading(false);
         }
@@ -283,6 +299,11 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                     programData = response.programs.find((p: Program) => p.id.toString() === programId);
                     if (!programData) {
                         console.error('Program not found with ID:', programId);
+                        Alert.alert(
+                            'Program Not Found',
+                            'The program you are looking for has been deleted or is no longer available.',
+                            [{ text: 'OK', onPress: () => navigation.goBack() }]
+                        );
                         return;
                     }
                 } else {
@@ -296,9 +317,20 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                     setCurrentWeek(programData.current_week);
                     setCurrentDay(programData.current_day);
                 }
+            } else {
+                Alert.alert(
+                    'No Programs Available',
+                    'You don\'t have any programs assigned to you.',
+                    [{ text: 'OK', onPress: () => navigation.goBack() }]
+                );
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error refreshing program data:', error);
+            Alert.alert(
+                'Error',
+                error.message || 'Failed to refresh program data. Please try again.',
+                [{ text: 'OK', onPress: () => navigation.goBack() }]
+            );
         }
     };
 
@@ -360,6 +392,14 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                     // If it's "Week already completed", that's fine - still refresh data
                     if (error.response?.data?.message === 'Week already completed') {
                         await refreshProgramData();
+                    } else if (error.response?.status === 404) {
+                        // Program has been deleted during the workout
+                        Alert.alert(
+                            'Program Deleted',
+                            'The program has been deleted while you were working out. Your progress has been saved.',
+                            [{ text: 'OK', onPress: () => navigation.goBack() }]
+                        );
+                        return;
                     } else {
                         // If it fails for other reasons (e.g., not the next week in sequence), that's okay
                         console.log('Week not ready to be marked complete yet:', error);
@@ -371,11 +411,20 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
         } catch (error: any) {
             console.error('Error saving progress:', error);
             console.error('Error details:', error.response?.data);
-            Alert.alert(
-                "Error",
-                "Failed to save workout progress. Please try again.",
-                [{ text: "OK" }]
-            );
+            
+            if (error.response?.status === 404) {
+                Alert.alert(
+                    'Program Not Found',
+                    'The program has been deleted or is no longer available. Your workout progress could not be saved.',
+                    [{ text: 'OK', onPress: () => navigation.goBack() }]
+                );
+            } else {
+                Alert.alert(
+                    "Error",
+                    error.message || "Failed to save workout progress. Please try again.",
+                    [{ text: "OK" }]
+                );
+            }
         }
     };
 
