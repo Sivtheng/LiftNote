@@ -51,6 +51,8 @@ class ProgramBuilderController extends Controller
                 $program->current_week_id = $week->id;
                 $program->current_day_id = $firstDay ? $firstDay->id : null;
                 $program->save();
+                // Reload relationships so getClientPrograms sees the new week/day as valid
+                $program->load(['weeks.days']);
             }
 
             return response()->json([
