@@ -66,6 +66,13 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
         setSelectedExerciseName('');
     };
 
+    // Helper to format duration
+    const formatDuration = (duration: number | undefined) => {
+        if (!duration || duration <= 0) return '-';
+        if (duration < 90) return `${duration} s`;
+        return `${(duration / 60).toFixed(1)} min`;
+    };
+
     useEffect(() => {
         const fetchClientData = async () => {
             try {
@@ -503,7 +510,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                                                                                         {totalDuration > 0 && (
                                                                                             <div className="mt-3 pt-3 border-t border-gray-200">
                                                                                                 <span className="text-sm text-gray-500">Total Duration: </span>
-                                                                                                <span className="text-sm font-medium">{totalDuration} min</span>
+                                                                                                <span className="text-sm font-medium">{formatDuration(totalDuration)}</span>
                                                                                             </div>
                                                                                         )}
                                                                                         
@@ -618,7 +625,7 @@ export default function ClientDetailsPage({ params }: { params: Promise<{ id: st
                                                     {set.rpe || '-'}
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                    {set.workout_duration ? `${set.workout_duration} min` : '-'}
+                                                    {formatDuration(set.workout_duration)}
                                                 </td>
                                             </tr>
                                         ))}
