@@ -25,12 +25,12 @@ class DatabaseSeeder extends Seeder
 
         // Create Coach User
         User::create([
-            'name' => 'coach',
-            'email' => 'coach@liftnote.com',
+            'name' => 'Rithy Phal',
+            'email' => 'rithy@liftnote.com',
             'password' => Hash::make('password'),
             'role' => 'coach',
-            'phone_number' => '0987654321',
-            'bio' => 'Professional Fitness Coach',
+            'phone_number' => null,
+            'bio' => null,
         ]);
 
         // Create default questionnaire questions
