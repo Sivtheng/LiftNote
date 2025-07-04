@@ -119,10 +119,25 @@ export default function HomeScreen() {
             ? Math.round((program.completed_weeks / program.total_weeks) * 100)
             : 0;
 
-        // Get current week and day from the program
-        const currentWeek = program.current_week;
-        const currentDay = program.current_day;
-        
+        let currentWeek = program.current_week;
+        let currentDay = program.current_day;
+
+        // Mobile override: if program is active and completed_weeks < total_weeks, and current_week is first week, show the first uncompleted week
+        if (
+            program.status === 'active' &&
+            program.completed_weeks !== undefined &&
+            program.total_weeks !== undefined &&
+            program.completed_weeks < program.total_weeks &&
+            program.weeks && program.weeks.length > 0
+        ) {
+            // Find the first week that is not completed (by order)
+            const uncompletedWeek = program.weeks.find((w: any) => w.order > program.completed_weeks);
+            if (uncompletedWeek) {
+                currentWeek = uncompletedWeek;
+                currentDay = uncompletedWeek.days && uncompletedWeek.days.length > 0 ? uncompletedWeek.days[0] : null;
+            }
+        }
+
         // If we have a current day but no current week, something is wrong
         if (currentDay && !currentWeek) {
             console.error('Program has current day but no current week:', program);
