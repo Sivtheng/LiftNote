@@ -44,6 +44,15 @@ class ProgramBuilderController extends Controller
                 'order' => $validated['order']
             ]);
 
+            // If the program was completed, reactivate it and set current week/day to the new week
+            if ($program->status === 'completed') {
+                $firstDay = $week->days()->orderBy('order')->first();
+                $program->status = 'active';
+                $program->current_week_id = $week->id;
+                $program->current_day_id = $firstDay ? $firstDay->id : null;
+                $program->save();
+            }
+
             return response()->json([
                 'message' => 'Week added successfully',
                 'week' => $week->load('days')
