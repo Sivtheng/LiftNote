@@ -239,9 +239,23 @@ class ProgramController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->get();
 
-            // Fix any programs that don't have current week/day set
+            // Fix any programs that don't have current week/day set or have invalid ones
             foreach ($programs as $program) {
-                if (!$program->current_week_id || !$program->current_day_id) {
+                $weekIds = $program->weeks()->pluck('id')->toArray();
+                $dayIds = [];
+                foreach ($program->weeks as $week) {
+                    foreach ($week->days as $day) {
+                        $dayIds[] = $day->id;
+                    }
+                }
+                $needsReset = false;
+                if (!$program->current_week_id || !in_array($program->current_week_id, $weekIds)) {
+                    $needsReset = true;
+                }
+                if (!$program->current_day_id || !in_array($program->current_day_id, $dayIds)) {
+                    $needsReset = true;
+                }
+                if ($needsReset) {
                     $firstWeek = $program->weeks()->orderBy('order')->first();
                     if ($firstWeek) {
                         $firstDay = $firstWeek->days()->orderBy('order')->first();
