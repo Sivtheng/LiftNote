@@ -121,6 +121,13 @@ export default function CommentsScreen() {
         }, [selectedProgramId])
     );
 
+    // Add this after useEffect hooks
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchPrograms();
+        }, [])
+    );
+
     const getCurrentUser = async () => {
         try {
             // Try to get user data from API first
@@ -195,12 +202,19 @@ export default function CommentsScreen() {
 
     const fetchComments = async (isRefreshing = false) => {
         if (!selectedProgramId) return;
-        
+
+        // Check if selectedProgramId exists in the current programs list
+        const programExists = programs.some(p => p.id.toString() === selectedProgramId);
+        if (!programExists) {
+            setSelectedProgramId(null);
+            setComments([]);
+            return;
+        }
+
         try {
             if (isRefreshing) {
                 setRefreshing(true);
             }
-            
             const response = await commentService.getProgramComments(selectedProgramId);
             const commentsData = (response as CommentsResponse).comments;
             setComments(commentsData);
