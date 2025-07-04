@@ -435,80 +435,107 @@ export default function ClientListPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {clients.map((client) => {
-                                        const selectedProgram = getSelectedProgram(client);
-                                        return (
-                                            <tr key={client.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center">
-                                                        <div className="flex-shrink-0 h-10 w-10">
-                                                            {client.profile_picture ? (
-                                                                <img
-                                                                    src={client.profile_picture}
-                                                                    alt={client.name + "'s profile"}
-                                                                    className="h-10 w-10 rounded-full object-cover border border-gray-200"
-                                                                />
-                                                            ) : (
-                                                                <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
-                                                                    <span className="text-lg font-medium text-indigo-600">
-                                                                        {client.name.charAt(0).toUpperCase()}
-                                                                    </span>
-                                                                </div>
-                                                            )}
+                                    {clients.flatMap((client) => {
+                                        if (client.client_programs && client.client_programs.length > 0) {
+                                            return client.client_programs.map((program) => (
+                                                <tr key={`${client.id}-${program.id}`} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            <div className="flex-shrink-0 h-10 w-10">
+                                                                {client.profile_picture ? (
+                                                                    <img
+                                                                        src={client.profile_picture}
+                                                                        alt={client.name + "'s profile"}
+                                                                        className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                                        <span className="text-lg font-medium text-indigo-600">
+                                                                            {client.name.charAt(0).toUpperCase()}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="ml-4">
+                                                                <div className="text-sm font-medium text-gray-900">{client.name}</div>
+                                                                <div className="text-sm text-gray-500">{client.email}</div>
+                                                            </div>
                                                         </div>
-                                                        <div className="ml-4">
-                                                            <div className="text-sm font-medium text-gray-900">{client.name}</div>
-                                                            <div className="text-sm text-gray-500">{client.email}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-900">{program.title}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-900">
+                                                            {program.created_at ? new Date(program.created_at).toLocaleDateString() : 'N/A'}
                                                         </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-900">
-                                                        {client.client_programs && client.client_programs.length > 1 ? (
-                                                            <select
-                                                                className="border border-gray-300 rounded px-2 py-1 text-sm"
-                                                                value={selectedProgram?.id || ''}
-                                                                onChange={e => {
-                                                                    setSelectedPrograms(prev => ({
-                                                                        ...prev,
-                                                                        [client.id]: Number(e.target.value)
-                                                                    }));
-                                                                }}
-                                                            >
-                                                                {client.client_programs.map(program => (
-                                                                    <option key={program.id} value={program.id}>
-                                                                        {program.title}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                        ) : (
-                                                            selectedProgram?.title || 'No program assigned'
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm text-gray-900">
-                                                        {selectedProgram?.created_at
-                                                            ? new Date(selectedProgram.created_at).toLocaleDateString()
-                                                            : 'N/A'}
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <Link
-                                                        href={`/client/${client.id}${selectedProgram ? `?programId=${selectedProgram.id}` : ''}`}
-                                                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                                                    >
-                                                        View
-                                                    </Link>
-                                                    <button
-                                                        onClick={() => handleDeleteClick(client)}
-                                                        className="text-red-600 hover:text-red-900"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        );
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <Link
+                                                            href={`/client/${client.id}`}
+                                                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                                                        >
+                                                            View
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => handleDeleteClick(client)}
+                                                            className="text-red-600 hover:text-red-900"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ));
+                                        } else {
+                                            // No programs for this client
+                                            return (
+                                                <tr key={`${client.id}-no-program`} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            <div className="flex-shrink-0 h-10 w-10">
+                                                                {client.profile_picture ? (
+                                                                    <img
+                                                                        src={client.profile_picture}
+                                                                        alt={client.name + "'s profile"}
+                                                                        className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                                        <span className="text-lg font-medium text-indigo-600">
+                                                                            {client.name.charAt(0).toUpperCase()}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="ml-4">
+                                                                <div className="text-sm font-medium text-gray-900">{client.name}</div>
+                                                                <div className="text-sm text-gray-500">{client.email}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-500">No program assigned</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-900">N/A</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <Link
+                                                            href={`/client/${client.id}`}
+                                                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                                                        >
+                                                            View
+                                                        </Link>
+                                                        <button
+                                                            onClick={() => handleDeleteClick(client)}
+                                                            className="text-red-600 hover:text-red-900"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        }
                                     })}
                                 </tbody>
                             </table>
