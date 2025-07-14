@@ -166,15 +166,20 @@ class ProgramBuilderController extends Controller
 
             DB::beginTransaction();
 
-            // Create or find exercise
-            $exercise = Exercise::firstOrCreate(
-                ['name' => $validated['name']],
-                [
-                    'description' => $validated['description'] ?? null,
-                    'video_link' => $validated['video_link'] ?? null,
-                    'created_by' => Auth::id()
-                ]
-            );
+            // If an exercise with the same name exists, create a new one with a unique name (for duplication)
+            $baseName = $validated['name'];
+            $name = $baseName;
+            $suffix = 1;
+            while (Exercise::where('name', $name)->exists()) {
+                $name = $baseName . ' (Copy' . ($suffix > 1 ? ' ' . $suffix : '') . ')';
+                $suffix++;
+            }
+            $exercise = Exercise::create([
+                'name' => $name,
+                'description' => $validated['description'] ?? null,
+                'video_link' => $validated['video_link'] ?? null,
+                'created_by' => Auth::id()
+            ]);
 
             // Attach exercise to day with pivot data
             $day->exercises()->attach($exercise->id, [
