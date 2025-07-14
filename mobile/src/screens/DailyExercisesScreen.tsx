@@ -394,31 +394,6 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                     }
                 }
             }
-
-            // Check if this might be the last day of the week and try to mark week as complete
-            if (currentWeek) {
-                try {
-                    await programService.markWeekComplete(program?.id.toString() || '', currentWeek.id.toString());
-                    // Refresh program data to get updated completion status
-                    await refreshProgramData();
-                } catch (error: any) {
-                    // If it's "Week already completed", that's fine - still refresh data
-                    if (error.response?.data?.message === 'Week already completed') {
-                        await refreshProgramData();
-                    } else if (error.response?.status === 404) {
-                        // Program has been deleted during the workout
-                        Alert.alert(
-                            'Program Deleted',
-                            'The program has been deleted while you were working out. Your progress has been saved.',
-                            [{ text: 'OK', onPress: () => navigation.goBack() }]
-                        );
-                        return;
-                    } else {
-                        // If it fails for other reasons (e.g., not the next week in sequence), that's okay
-                        console.log('Week not ready to be marked complete yet:', error);
-                    }
-                }
-            }
             
             navigation.goBack();
         } catch (error: any) {

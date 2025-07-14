@@ -208,18 +208,6 @@ export const programService = {
             throw error;
         }
     },
-    markWeekComplete: async (programId: string, weekId: string) => {
-        try {
-            const response = await api.post(`/programs/${programId}/weeks/${weekId}/complete`);
-            return response.data;
-        } catch (error: any) {
-            console.error('Mark week complete error:', error);
-            if (error.response?.status === 404) {
-                throw new Error('Program or week not found');
-            }
-            throw error;
-        }
-    },
 };
 
 // Progress Log Services

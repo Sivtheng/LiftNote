@@ -63,7 +63,6 @@ Route::middleware('auth:sanctum')->group(function () {
         // Client Routes
         Route::middleware('role:client')->group(function () {
             Route::get('/client', [ProgramController::class, 'getClientPrograms']);
-            Route::post('/{program}/weeks/{week}/complete', [ProgramController::class, 'markWeekComplete']);
         });
 
         // Shared Routes (authorized in controller)
