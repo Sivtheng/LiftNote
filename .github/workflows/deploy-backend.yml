@@ -50,6 +50,7 @@ jobs:
           
           # Pull latest changes
           echo "📥 Pulling latest changes..."
+          git config pull.rebase false
           git pull origin main
           
           # Stop existing containers
