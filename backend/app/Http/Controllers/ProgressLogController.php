@@ -215,10 +215,11 @@ class ProgressLogController extends Controller
                     $isLastWeek = $currentWeek->order === $program->weeks()->max('order');
                     
                     if ($isLastWeek) {
-                        // Mark program as completed
+                        // Mark program as completed and set completed_weeks to total_weeks
                         $program->update([
                             'status' => 'completed',
-                            'completed_at' => now()
+                            'completed_at' => now(),
+                            'completed_weeks' => $program->total_weeks
                         ]);
                         Log::info('Program completed', ['program_id' => $program->id]);
                     } else {

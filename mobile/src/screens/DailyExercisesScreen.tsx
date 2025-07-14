@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
@@ -18,6 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { programService, progressLogService } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Exercise {
     id: number;
@@ -92,26 +93,28 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
     const appStateRef = useRef(AppState.currentState);
     const [appStateVisible, setAppStateVisible] = useState(appStateRef.current);
 
-    useEffect(() => {
-        fetchProgramData();
-        loadWorkoutState();
-        loadExerciseLogs();
-        const subscription = AppState.addEventListener('change', nextAppState => {
-            if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
-                loadWorkoutState();
-                loadExerciseLogs();
-            }
-            appStateRef.current = nextAppState;
-            setAppStateVisible(appStateRef.current);
-        });
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchProgramData();
+            loadWorkoutState();
+            loadExerciseLogs();
+            const subscription = AppState.addEventListener('change', nextAppState => {
+                if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
+                    loadWorkoutState();
+                    loadExerciseLogs();
+                }
+                appStateRef.current = nextAppState;
+                setAppStateVisible(appStateRef.current);
+            });
 
-        return () => {
-            subscription.remove();
-            if (timerRef.current) {
-                clearInterval(timerRef.current);
-            }
-        };
-    }, [programId]);
+            return () => {
+                subscription.remove();
+                if (timerRef.current) {
+                    clearInterval(timerRef.current);
+                }
+            };
+        }, [programId])
+    );
 
     const loadWorkoutState = async () => {
         try {
@@ -227,21 +230,7 @@ export default function DailyExercisesScreen({ navigation, route }: any) {
                 
                 setProgram(programData);
                 
-                // Mobile override: if program is active and completed_weeks < total_weeks, and current_week is first week, show the first uncompleted week
-                if (
-                    programData.status === 'active' &&
-                    programData.completed_weeks !== undefined &&
-                    programData.total_weeks !== undefined &&
-                    programData.completed_weeks < programData.total_weeks &&
-                    programData.weeks && programData.weeks.length > 0
-                ) {
-                    // Find the first week that is not completed (by order)
-                    const uncompletedWeek = programData.weeks.find((w: any) => w.order > programData.completed_weeks);
-                    if (uncompletedWeek) {
-                        setCurrentWeek(uncompletedWeek);
-                        setCurrentDay(uncompletedWeek.days && uncompletedWeek.days.length > 0 ? uncompletedWeek.days[0] : null);
-                    }
-                } else if (programData.current_week && programData.current_day) {
+                if (programData.current_week && programData.current_day) {
                     setCurrentWeek(programData.current_week);
                     setCurrentDay(programData.current_day);
                 }
