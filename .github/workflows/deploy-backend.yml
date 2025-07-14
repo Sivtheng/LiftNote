@@ -50,6 +50,8 @@ jobs:
           
           # Pull latest changes
           echo "📥 Pulling latest changes..."
+          git config --global user.email "ci@liftnote.xyz"
+          git config --global user.name "LiftNote CI"
           git config pull.rebase false
           git pull origin main
           
