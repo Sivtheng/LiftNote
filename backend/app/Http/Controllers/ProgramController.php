@@ -473,7 +473,6 @@ class ProgramController extends Controller
                     }
                 }
             }
-
             // Set the first week and day as current
             $firstWeek = $duplicatedProgram->weeks()->orderBy('order')->first();
             if ($firstWeek) {
