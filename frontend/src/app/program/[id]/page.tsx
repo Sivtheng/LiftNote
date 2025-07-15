@@ -1138,7 +1138,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                         </div>
 
                                         {/* Exercise List */}
-                                        {day.exercises.length === 0 ? (
+                                        {Array.isArray(day.exercises) && day.exercises.length === 0 ? (
                                             <div className="text-center py-4">
                                                 <button
                                                     onClick={() => {
