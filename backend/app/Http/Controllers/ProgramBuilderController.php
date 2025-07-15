@@ -166,16 +166,9 @@ class ProgramBuilderController extends Controller
 
             DB::beginTransaction();
 
-            // If an exercise with the same name exists, create a new one with a unique name (for duplication)
-            $baseName = $validated['name'];
-            $name = $baseName;
-            $suffix = 1;
-            while (Exercise::where('name', $name)->exists()) {
-                $name = $baseName . ' (Copy' . ($suffix > 1 ? ' ' . $suffix : '') . ')';
-                $suffix++;
-            }
+            // Always allow duplicate exercise names
             $exercise = Exercise::create([
-                'name' => $name,
+                'name' => $validated['name'],
                 'description' => $validated['description'] ?? null,
                 'video_link' => $validated['video_link'] ?? null,
                 'created_by' => Auth::id()
