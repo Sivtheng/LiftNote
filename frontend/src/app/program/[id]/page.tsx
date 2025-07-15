@@ -352,11 +352,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                         throw new Error('Unexpected response from server');
                     }
 
-                    setWeeks(prevWeeks => {
-                        const updatedWeeks = [...prevWeeks];
-                        updatedWeeks.splice(weekIndex, 1);
-                        return updatedWeeks;
-                    });
+                    await fetchProgram(); // <-- Refetch program after delete
                     break;
                 }
                 case 'rename': {
