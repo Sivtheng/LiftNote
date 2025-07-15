@@ -62,7 +62,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     const [editingWeek, setEditingWeek] = useState<string | null>(null);
     const [editingWeekName, setEditingWeekName] = useState<string>('');
     const [editingDay, setEditingDay] = useState<{ weekId: string; dayId: string } | null>(null);
-    const [showWeekDropdown, setShowWeekDropdown] = useState<string | null>(null);
     const [showDayDropdown, setShowDayDropdown] = useState<{ weekId: string; dayId: string } | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
@@ -151,7 +150,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             const isDropdownMenu = target.closest('[role="menu"]');
             
             if (!isDropdownButton && !isDropdownMenu) {
-                setShowWeekDropdown(null);
                 setShowDayDropdown(null);
             }
         }
@@ -338,7 +336,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                     break;
                 }
             }
-            setShowWeekDropdown(null);
         } catch (error) {
             console.error('Error performing week action:', error);
             setError(error instanceof Error ? error.message : 'Failed to perform week action');
@@ -980,54 +977,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                         )}
                                     </div>
                                 )}
-                                <div className="relative" ref={dropdownRef}>
-                                    <button
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setShowWeekDropdown(showWeekDropdown === week.id ? null : week.id);
-                                        }}
-                                        className="p-2 hover:bg-gray-100 rounded-lg"
-                                        aria-haspopup="true"
-                                    >
-                                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                                        </svg>
-                                    </button>
-                                    {showWeekDropdown === week.id && (
-                                        <div 
-                                            className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                            }}
-                                            role="menu"
-                                        >
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    handleWeekAction(week.id, 'rename');
-                                                }}
-                                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            >
-                                                Rename
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    handleWeekAction(week.id, 'duplicate');
-                                                }}
-                                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                            >
-                                                Duplicate
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
                             </div>
 
                             {/* Days */}
