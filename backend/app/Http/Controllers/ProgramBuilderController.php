@@ -729,12 +729,20 @@ class ProgramBuilderController extends Controller
 
             // Add new weeks if increasing
             $currentWeekCount = $program->weeks()->count();
+            $newWeek = null;
             if ($validated['total_weeks'] > $currentWeekCount) {
                 for ($i = $currentWeekCount + 1; $i <= $validated['total_weeks']; $i++) {
-                    $program->weeks()->create([
+                    $newWeek = $program->weeks()->create([
                         'name' => 'Week ' . $i,
                         'order' => $i
                     ]);
+                }
+                // After adding, set current_week_id to the new week
+                if ($newWeek) {
+                    $firstDay = $newWeek->days()->orderBy('order')->first();
+                    $program->current_week_id = $newWeek->id;
+                    $program->current_day_id = $firstDay ? $firstDay->id : null;
+                    $program->save();
                 }
             }
 
