@@ -856,17 +856,8 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 throw new Error(errorData?.message || `Failed to update total weeks: ${response.status} ${response.statusText}`);
             }
 
-            const data = await response.json();
-            if (!data.program) {
-                throw new Error('Invalid response format: program data missing');
-            }
-
-            // Update the program and weeks state with the fresh data
-            setProgram(data.program);
-            setWeeks(data.program.weeks || []);
-
-            setShowTotalWeeksModal(false);
-            setNewTotalWeeks(0);
+            // Instead of updating state, reload the page to ensure fresh data
+            window.location.reload();
         } catch (error) {
             console.error('Error updating total weeks:', error);
             setError(error instanceof Error ? error.message : 'Failed to update total weeks');
