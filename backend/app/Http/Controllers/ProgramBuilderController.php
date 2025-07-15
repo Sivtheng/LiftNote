@@ -727,9 +727,20 @@ class ProgramBuilderController extends Controller
                 'total_weeks' => $validated['total_weeks']
             ]);
 
+            // Add new weeks if increasing
+            $currentWeekCount = $program->weeks()->count();
+            if ($validated['total_weeks'] > $currentWeekCount) {
+                for ($i = $currentWeekCount + 1; $i <= $validated['total_weeks']; $i++) {
+                    $program->weeks()->create([
+                        'name' => 'Week ' . $i,
+                        'order' => $i
+                    ]);
+                }
+            }
+
             return response()->json([
                 'message' => 'Total weeks updated successfully',
-                'program' => $program->fresh()
+                'program' => $program->fresh('weeks')
             ]);
         } catch (\Exception $e) {
             return response()->json([

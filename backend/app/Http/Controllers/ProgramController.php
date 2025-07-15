@@ -53,6 +53,14 @@ class ProgramController extends Controller
                     'total_weeks' => $validated['total_weeks']
                 ]);
 
+                // Create the specified number of weeks immediately
+                for ($i = 1; $i <= $validated['total_weeks']; $i++) {
+                    $program->weeks()->create([
+                        'name' => 'Week ' . $i,
+                        'order' => $i
+                    ]);
+                }
+
                 // Set initial current week and day
                 $firstWeek = $program->weeks()->orderBy('order')->first();
                 if ($firstWeek) {
@@ -67,7 +75,7 @@ class ProgramController extends Controller
 
                 return response()->json([
                     'message' => 'Program created successfully',
-                    'program' => $program->load(['coach', 'client'])
+                    'program' => $program->load(['coach', 'client', 'weeks'])
                 ]);
             }
 

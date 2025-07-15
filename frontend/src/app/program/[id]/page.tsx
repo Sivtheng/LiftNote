@@ -1306,34 +1306,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                             </div>
                         </div>
                     ))}
-
-                    {/* Add Week Card */}
-                    <button
-                        onClick={handleAddWeek}
-                        disabled={weeks.length >= program.total_weeks}
-                        className={`bg-white rounded-xl shadow-lg p-6 border-2 border-dashed transition-colors duration-200 ${
-                            weeks.length >= program.total_weeks
-                                ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
-                                : 'border-gray-300 hover:border-indigo-500 hover:bg-gray-50'
-                        }`}
-                    >
-                        <div className="text-center">
-                            <svg className={`mx-auto h-12 w-12 ${weeks.length >= program.total_weeks ? 'text-gray-300' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            <p className={`mt-2 text-lg font-medium ${weeks.length >= program.total_weeks ? 'text-gray-400' : 'text-gray-900'}`}>
-                                {weeks.length >= program.total_weeks 
-                                    ? `Maximum weeks reached (${program.total_weeks})`
-                                    : 'Add Week'
-                                }
-                            </p>
-                            {weeks.length >= program.total_weeks && (
-                                <p className="mt-1 text-sm text-gray-500">
-                                    Increase the week limit to add more weeks
-                                </p>
-                            )}
-                        </div>
-                    </button>
                 </div>
             </div>
 
