@@ -736,12 +736,14 @@ class ProgramBuilderController extends Controller
                         'name' => 'Week ' . $i,
                         'order' => $i
                     ]);
-                }
-                // After adding, set current_week_id to the new week
-                if ($newWeek) {
-                    $firstDay = $newWeek->days()->orderBy('order')->first();
+                    // Create a default day in the new week
+                    $newDay = $newWeek->days()->create([
+                        'name' => 'Day 1',
+                        'order' => 1
+                    ]);
+                    // After adding, set current_week_id and current_day_id to the new week and new day
                     $program->current_week_id = $newWeek->id;
-                    $program->current_day_id = $firstDay ? $firstDay->id : null;
+                    $program->current_day_id = $newDay->id;
                     $program->save();
                 }
             }
