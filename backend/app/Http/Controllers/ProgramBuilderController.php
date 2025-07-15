@@ -744,8 +744,14 @@ class ProgramBuilderController extends Controller
                     // After adding, set current_week_id and current_day_id to the new week and new day
                     $program->current_week_id = $newWeek->id;
                     $program->current_day_id = $newDay->id;
-                    $program->save();
                 }
+                // If the program was completed, reactivate it and adjust completed_weeks
+                if ($program->status === 'completed') {
+                    $program->status = 'active';
+                    // Optionally, set completed_weeks to total_weeks - 1 (so the new week is not marked as completed)
+                    $program->completed_weeks = max(0, $program->total_weeks - 1);
+                }
+                $program->save();
             }
 
             return response()->json([
