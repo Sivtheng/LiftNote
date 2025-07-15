@@ -1041,7 +1041,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
 
                             {/* Days */}
                             <div className="space-y-4">
-                                {week.days.map((day) => (
+                                {Array.isArray(week.days) && week.days.map((day) => (
                                     <div key={day.id} className="bg-gray-50 rounded-lg p-4 w-full">
                                         <div className="flex justify-between items-center mb-4">
                                             {editingDay?.weekId === week.id && editingDay?.dayId === day.id ? (
