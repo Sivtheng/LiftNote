@@ -266,7 +266,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
         }
     };
 
-    const handleWeekAction = async (weekId: string, action: 'duplicate' | 'delete' | 'rename') => {
+    const handleWeekAction = async (weekId: string, action: 'duplicate' | 'rename') => {
         try {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -329,30 +329,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                         updatedWeeks.splice(weekIndex + 1, 0, newWeek);
                         return updatedWeeks;
                     });
-                    break;
-                }
-                case 'delete': {
-                    const response = await fetch(`${API_CONFIG.BASE_URL}/programs/${resolvedParams.id}/builder/weeks/${weekId}`, {
-                        method: 'DELETE',
-                        headers: getAuthHeaders(token)
-                    });
-
-                    const data = await response.json();
-
-                    if (!response.ok) {
-                        console.error('Failed to delete week:', {
-                            status: response.status,
-                            statusText: response.statusText,
-                            error: data
-                        });
-                        throw new Error(data.message || `Failed to delete week: ${response.status} ${response.statusText}`);
-                    }
-
-                    if (data.message !== 'Week deleted successfully') {
-                        throw new Error('Unexpected response from server');
-                    }
-
-                    await fetchProgram(); // <-- Refetch program after delete
                     break;
                 }
                 case 'rename': {
@@ -885,11 +861,9 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                 throw new Error('Invalid response format: program data missing');
             }
 
-            // Update the program state
-            setProgram(prevProgram => ({
-                ...prevProgram,
-                total_weeks: data.program.total_weeks
-            }));
+            // Update the program and weeks state with the fresh data
+            setProgram(data.program);
+            setWeeks(data.program.weeks || []);
 
             setShowTotalWeeksModal(false);
             setNewTotalWeeks(0);
@@ -1059,17 +1033,6 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
                                                 className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                             >
                                                 Duplicate
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    handleWeekAction(week.id, 'delete');
-                                                }}
-                                                className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                                            >
-                                                Delete
                                             </button>
                                         </div>
                                     )}
