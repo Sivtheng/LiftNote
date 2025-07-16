@@ -247,7 +247,6 @@ export default function QuestionnairePage() {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Key</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Question</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Required</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -258,7 +257,6 @@ export default function QuestionnairePage() {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{question.order}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{question.key}</td>
                                     <td className="px-6 py-4 text-sm text-gray-900">{question.question}</td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{question.type}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                         {question.is_required ? 'Yes' : 'No'}
                                     </td>
