@@ -197,16 +197,19 @@ class ProgressLogController extends Controller
             $currentDay = ProgramDay::findOrFail($request->day_id);
             
             // Get all exercises for this day
-            $dayExercises = $currentDay->exercises()->count();
+            $exercises = $currentDay->exercises()->get();
+            $totalSets = $exercises->sum(function($exercise) {
+                return $exercise->pivot->sets;
+            });
             // Count how many logs we have for this day
-            $completedExercises = ProgressLog::where('program_id', $program->id)
+            $completedSets = ProgressLog::where('program_id', $program->id)
                 ->where('user_id', Auth::id())
                 ->where('day_id', $request->day_id)
                 ->whereDate('completed_at', date('Y-m-d'))
                 ->count();
 
-            // Only update program progress if all exercises for the day are completed
-            if ($completedExercises >= $dayExercises) {
+            // Only update program progress if all sets for the day are completed
+            if ($completedSets >= $totalSets) {
                 // Check if this is the last day of the week
                 $isLastDayOfWeek = $currentDay->order === $currentWeek->days()->max('order');
                 
