@@ -17,8 +17,6 @@ export default function QuestionnairePage() {
     const [formData, setFormData] = useState({
         key: '',
         question: '',
-        type: 'text',
-        options: [] as string[],
         is_required: true,
         order: 0
     });
@@ -79,7 +77,11 @@ export default function QuestionnairePage() {
             const response = await fetch(`${API_CONFIG.BASE_URL}/questionnaires/questions`, {
                 method: 'POST',
                 headers: getAuthHeaders(token),
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    ...formData,
+                    type: 'text',
+                    options: []
+                })
             });
 
             if (!response.ok) {
@@ -128,8 +130,6 @@ export default function QuestionnairePage() {
         setFormData({
             key: question.key,
             question: question.question,
-            type: question.type,
-            options: question.options || [],
             is_required: question.is_required,
             order: question.order
         });
@@ -139,8 +139,6 @@ export default function QuestionnairePage() {
         setFormData({
             key: '',
             question: '',
-            type: 'text',
-            options: [],
             is_required: true,
             order: 0
         });
@@ -204,62 +202,6 @@ export default function QuestionnairePage() {
                                 required
                             />
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Type</label>
-                            <select
-                                value={formData.type}
-                                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
-                            >
-                                <option value="text">Text</option>
-                                <option value="number">Number</option>
-                                <option value="select">Select</option>
-                                <option value="textarea">Textarea</option>
-                            </select>
-                        </div>
-
-                        {formData.type === 'select' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Options</label>
-                                <div className="space-y-2 mt-1">
-                                    {formData.options.map((option, index) => (
-                                        <div key={index} className="flex items-center gap-2">
-                                            <input
-                                                type="text"
-                                                value={option}
-                                                onChange={(e) => {
-                                                    const newOptions = [...formData.options];
-                                                    newOptions[index] = e.target.value;
-                                                    setFormData({ ...formData, options: newOptions });
-                                                }}
-                                                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-black"
-                                                placeholder={`Option ${index + 1}`}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const newOptions = formData.options.filter((_, i) => i !== index);
-                                                    setFormData({ ...formData, options: newOptions });
-                                                }}
-                                                className="text-red-600 hover:text-red-900"
-                                            >
-                                                Remove
-                                            </button>
-                                        </div>
-                                    ))}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setFormData({ ...formData, options: [...formData.options, ''] });
-                                        }}
-                                        className="text-indigo-600 hover:text-indigo-900 text-sm"
-                                    >
-                                        + Add Option
-                                    </button>
-                                </div>
-                            </div>
-                        )}
 
                         <div className="flex items-center">
                             <input

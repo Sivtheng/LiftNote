@@ -446,7 +446,7 @@ class ProgramController extends Controller
 
             // Create a new program with the same data but no client assigned
             $duplicatedProgram = Program::create([
-                'title' => $program->title . ' (Copy)',
+                'title' => $program->title,
                 'description' => $program->description,
                 'coach_id' => Auth::id(),
                 'client_id' => null, // No client assigned initially

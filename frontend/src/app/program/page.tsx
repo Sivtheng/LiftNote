@@ -182,7 +182,7 @@ export default function ProgramListPage() {
         }
     };
 
-    const handleStatusChange = async (programId: number, newStatus: 'active' | 'completed' | 'cancelled') => {
+    const handleStatusChange = async (programId: number, newStatus: 'active' | 'completed') => {
         try {
             const token = localStorage.getItem('token');
             if (!token) {
@@ -242,12 +242,6 @@ export default function ProgramListPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                 );
-            case 'cancelled':
-                return (
-                    <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                );
             default:
                 return null;
         }
@@ -304,18 +298,16 @@ export default function ProgramListPage() {
                                             value={program.status}
                                             onChange={(e) => {
                                                 e.stopPropagation();
-                                                handleStatusChange(program.id, e.target.value as 'active' | 'completed' | 'cancelled');
+                                                handleStatusChange(program.id, e.target.value as 'active' | 'completed');
                                             }}
                                             onClick={(e) => e.stopPropagation()}
                                             className={`text-sm font-medium rounded-full px-2.5 py-0.5 cursor-pointer ${
                                                 program.status === 'active' ? 'bg-green-100 text-green-800' :
-                                                program.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                                'bg-red-100 text-red-800'
+                                                'bg-blue-100 text-blue-800'
                                             }`}
                                         >
                                             <option value="active">Active</option>
                                             <option value="completed">Completed</option>
-                                            <option value="cancelled">Cancelled</option>
                                         </select>
                                     </div>
                                 </div>
